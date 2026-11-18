@@ -167,6 +167,7 @@ class BuzzCmd(_Cmd):
 
 class SubmitAnswer(_Cmd):
     type: Literal["answer"] = "answer"
+    question_id: int | None = None  # the question the phone was showing; mismatch is rejected
     text: str = ""
     option: int | None = None
     stake: bool = False

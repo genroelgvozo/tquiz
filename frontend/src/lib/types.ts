@@ -217,6 +217,7 @@ export interface TeamJeopardy {
 
 export interface TeamFree {
   phase: "question" | "review";
+  question_id: number;
   number: number;
   total: number;
   options: string[];
@@ -269,7 +270,8 @@ export type ServerMessage<V> =
   | { type: "joined"; token: string }
   | { type: "pending" }
   | { type: "rejected" }
-  | { type: "kicked" };
+  | { type: "kicked" }
+  | { type: "pong" };
 
 // ---------- commands (app/game/commands.py) ----------
 
@@ -307,4 +309,4 @@ export type AdminCommand =
 export type TeamCommand =
   | { type: "join"; name: string }
   | { type: "buzz" }
-  | { type: "answer"; text: string; option: number | null; stake: boolean };
+  | { type: "answer"; question_id: number; text: string; option: number | null; stake: boolean };

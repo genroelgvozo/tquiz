@@ -29,7 +29,15 @@ export default function FreePanel({ view, send }: PanelProps) {
           →
         </button>
         <span style={{ flex: 1 }} />
-        <button className={`btn ${free.index >= total - 1 ? "primary" : ""}`} onClick={() => send({ type: "start_review" })}>
+        <button
+          className={`btn ${free.index >= total - 1 ? "primary" : ""}`}
+          onClick={() => {
+            const early = free.index < total - 1 || (t.status !== "finished" && t.status !== "idle");
+            if (!early || window.confirm("Начать разбор? Вернуться к вопросам этого тура будет нельзя.")) {
+              send({ type: "start_review" });
+            }
+          }}
+        >
           Начать разбор
         </button>
       </div>

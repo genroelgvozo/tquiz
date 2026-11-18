@@ -229,6 +229,8 @@ def _submit(game: "Game", team_id: str, cmd: SubmitAnswer) -> None:
         raise GameError("Приём ответов закрыт")
     rnd = game.current_round()
     question = current_question(game)
+    if cmd.question_id is not None and cmd.question_id != question.id:
+        raise GameError("Вопрос уже сменился")
     if question.options:
         if cmd.option is None or not 0 <= cmd.option < len(question.options):
             raise GameError("Выберите вариант")

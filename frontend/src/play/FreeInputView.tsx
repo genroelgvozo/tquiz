@@ -6,8 +6,13 @@ import { timerRemaining } from "../lib/timer";
 import type { Answer, TeamFree } from "../lib/types";
 
 const same = (a: Answer, b: Answer) => a.text === b.text && a.option === b.option && a.stake === b.stake;
+const RESEND_AFTER_MS = 1500;
 
-/** Answer is sent on every change, no submit button, no debounce. */
+/**
+ * Answer is sent on every change, no submit button, no debounce. Every send carries the question id,
+ * so a late or resent draft can never land on another question. If the server's copy still differs
+ * from the draft a moment later (lost on a dead socket, reconnect), the draft is sent again.
+ */
 export default function FreeInputView({
   free,
   questionKey,
@@ -23,29 +28,37 @@ export default function FreeInputView({
 }) {
   useTicker(250);
   const [draft, setDraft] = useState<Answer>(free.answer);
-  const unsent = useRef(false);
+  const lastSent = useRef(0);
 
   // new question → start from what the server has
   useEffect(() => {
     setDraft(free.answer);
-    unsent.current = false;
   }, [questionKey]);
 
   const timeUp = free.timer.status !== "idle" && timerRemaining(free.timer, now()) <= 0;
   const locked = !free.input_open || timeUp;
 
-  const push = (next: Answer) => {
-    setDraft(next);
-    const ok = send({ type: "answer", text: next.text, option: next.option, stake: next.stake });
-    unsent.current = !ok;
+  const sendDraft = (d: Answer) => {
+    lastSent.current = Date.now();
+    send({ type: "answer", question_id: free.question_id, text: d.text, option: d.option, stake: d.stake });
   };
 
-  // socket came back: resend what the server may not have
+  const push = (next: Answer) => {
+    setDraft(next);
+    sendDraft(next);
+  };
+
+  // latest values for the retry timer
+  const latest = useRef({ draft, free, locked, status, sendDraft });
+  latest.current = { draft, free, locked, status, sendDraft };
   useEffect(() => {
-    if (status === "open" && unsent.current && !locked) {
-      unsent.current = !send({ type: "answer", text: draft.text, option: draft.option, stake: draft.stake });
-    }
-  }, [status, locked, draft, send]);
+    const id = window.setInterval(() => {
+      const { draft: d, free: f, locked: l, status: s, sendDraft: resend } = latest.current;
+      if (l || s !== "open" || f.phase !== "question") return;
+      if (!same(d, f.answer) && Date.now() - lastSent.current > RESEND_AFTER_MS) resend(d);
+    }, 500);
+    return () => window.clearInterval(id);
+  }, []);
 
   if (free.phase === "review") {
     return (

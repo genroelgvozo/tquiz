@@ -48,7 +48,12 @@ class Hub:
     # ---------- lifecycle ----------
 
     def restore(self) -> None:
-        loaded = store.load_game(self.db)
+        try:
+            loaded = store.load_game(self.db)
+        except (ValidationError, ValueError):
+            log.warning("stored game state is invalid (old schema?) — discarding it", exc_info=True)
+            store.clear_game(self.db)
+            return
         if loaded is None:
             return
         quiz_id, state = loaded
@@ -83,10 +88,13 @@ class Hub:
             await asyncio.sleep(TICK_INTERVAL)
             if self.game is None:
                 continue
-            async with self.lock:
-                if self.game is not None and self.game.tick():
-                    self._save()
-                    await self._broadcast()
+            try:
+                async with self.lock:
+                    if self.game is not None and self.game.tick():
+                        self._save()
+                        await self._broadcast()
+            except Exception:
+                log.exception("tick failed")
 
     # ---------- connections ----------
 
@@ -119,7 +127,7 @@ class Hub:
             await self._send(ws, self._screen_message())
         try:
             while True:
-                await ws.receive_text()  # screen never sends commands; keep the socket alive
+                await self._receive(ws)  # screen sends only heartbeats
         except WebSocketDisconnect:
             pass
         finally:
@@ -151,12 +159,16 @@ class Hub:
         finally:
             async with self.lock:
                 self.unjoined.discard(ws)
-                for rid in [rid for rid, s in self.pending.items() if s is ws]:
+                dropped = [rid for rid, s in self.pending.items() if s is ws]
+                for rid in dropped:
                     del self.pending[rid]
+                    self._drop_request(rid)
                 gone = [tid for tid, s in self.teams.items() if s is ws]
                 for tid in gone:
                     del self.teams[tid]
-                if gone:
+                if dropped:
+                    self._save()
+                if gone or dropped:
                     await self._broadcast_admins()
 
     # ---------- command handling ----------
@@ -175,6 +187,12 @@ class Hub:
             request = None
             if isinstance(cmd, (ApproveRejoin, RejectRejoin)):
                 request = next((r for r in game.state.rejoin_requests if r.id == cmd.request_id), None)
+            if isinstance(cmd, ApproveRejoin) and request is not None and request.id not in self.pending:
+                self._drop_request(request.id)
+                self._save()
+                await self._broadcast()
+                await self._send(ws, {"type": "error", "message": "Устройство отключилось — пусть войдут заново"})
+                return
             deleted_requests = []
             if isinstance(cmd, DeleteTeam):
                 deleted_requests = [r.id for r in game.state.rejoin_requests if r.team_id == cmd.team_id]
@@ -264,6 +282,14 @@ class Hub:
         if old is not None and old is not ws:
             await self._close(old)
 
+    def _drop_request(self, request_id: str) -> None:
+        if self.game is None:
+            return
+        try:
+            self.game.apply_admin(RejectRejoin(request_id=request_id))
+        except GameError:
+            pass  # already gone
+
     def _unbind_all_teams(self) -> None:
         self.unjoined.update(self.teams.values())
         self.unjoined.update(self.pending.values())
@@ -323,4 +349,9 @@ class Hub:
             data = json.loads(text)
         except ValueError:
             return None
-        return data if isinstance(data, dict) else None
+        if not isinstance(data, dict):
+            return None
+        if data.get("type") == "ping":
+            await self._send(ws, {"type": "pong"})
+            return None
+        return data

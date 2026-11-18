@@ -131,7 +131,19 @@ export default function Console() {
           {st.overlay === "leaderboard" ? "Убрать рейтинг" : "Рейтинг на экран"}
         </button>
         {inGame && hasNextRound && (
-          <button className="btn" onClick={() => send({ type: "next_round" })}>
+          <button
+            className="btn"
+            onClick={() => {
+              const unfinished =
+                (st.stage === "free" && st.free?.phase === "question") ||
+                (st.stage === "jeopardy" && round !== undefined && st.jeopardy !== null &&
+                  st.jeopardy.played.length < round.categories.reduce((n, c) => n + c.questions.length, 0));
+              const text = unfinished
+                ? "Тур не закончен (есть неразобранные ответы или несыгранные вопросы). Перейти к следующему туру? Вернуться будет нельзя."
+                : "Перейти к следующему туру?";
+              if (st.stage === "intro" || window.confirm(text)) send({ type: "next_round" });
+            }}
+          >
             След. тур →
           </button>
         )}

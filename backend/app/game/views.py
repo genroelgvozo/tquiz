@@ -105,6 +105,7 @@ class TeamJeopardy(BaseModel):
 
 class TeamFree(BaseModel):
     phase: Literal["question", "review"]
+    question_id: int
     number: int
     total: int
     options: list[str]
@@ -231,9 +232,17 @@ def _screen_free(game: Game, rnd: RoundData) -> ScreenFree:
             text=current.text,
             media=current.media,
             options=list(current.options),
-            answer=current.answer if reviewing else None,
+            answer=_revealed_answer(current) if reviewing else None,
         ),
     )
+
+
+def _revealed_answer(question: QuestionData) -> str:
+    if question.answer.strip():
+        return question.answer
+    if question.options and question.correct_option is not None:
+        return f"{chr(65 + question.correct_option)}. {question.options[question.correct_option]}"
+    return question.answer
 
 
 # ---------- public builders ----------
@@ -283,6 +292,7 @@ def team_view(game: Game, team_id: str) -> TeamView:
         own = free.answers.get(str(current.id), {}).get(team_id)
         fv = TeamFree(
             phase=free.phase,
+            question_id=current.id,
             number=index + 1,
             total=len(rnd.questions),
             options=list(current.options),

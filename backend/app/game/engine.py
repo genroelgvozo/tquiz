@@ -142,10 +142,15 @@ class Game:
         self._transaction(lambda: (self.team(team_id), handler(self, team_id, cmd)))
 
     def _run_admin(self, handler, cmd) -> None:
-        snapshot = self.state.model_dump(exclude={"undo_stack"}) if type(cmd) in UNDOABLE else None
+        entry = None
+        if isinstance(cmd, AdjustScore):
+            # a manual score fix is undone by reverting just that score, never the whole game
+            entry = {"kind": "score", "team_id": cmd.team_id, "delta": cmd.delta}
+        elif type(cmd) in UNDOABLE:
+            entry = {"kind": "state", "state": self.state.model_dump(exclude={"undo_stack"})}
         handler(self, cmd)
-        if snapshot is not None:
-            self.state.undo_stack.append(snapshot)
+        if entry is not None:
+            self.state.undo_stack.append(entry)
             del self.state.undo_stack[:-UNDO_LIMIT]
 
     def _transaction(self, fn: Callable[[], object]) -> None:
@@ -174,6 +179,7 @@ def _start_game(game: Game, cmd: StartGame) -> None:
     game.state.stage = "intro"
     game.state.round_index = 0
     game.state.qr_visible = False
+    game.state.undo_stack = []
 
 
 def _start_round(game: Game, cmd: StartRound) -> None:
@@ -256,8 +262,13 @@ def _undo(game: Game, cmd: Undo) -> None:
     current = game.state
     if not current.undo_stack:
         raise GameError("Нечего отменять")
-    snapshot = current.undo_stack.pop()
-    restored = GameState.model_validate(snapshot)
+    entry = current.undo_stack.pop()
+    if entry.get("kind") == "score":
+        team = game.find_team(entry["team_id"])
+        if team is not None:
+            team.score -= entry["delta"]
+        return
+    restored = GameState.model_validate(entry["state"])
     old_scores = {t.id: t.score for t in restored.teams}
     current_ids = {t.id for t in current.teams}
     vanished = [tid for tid in old_scores if tid not in current_ids]

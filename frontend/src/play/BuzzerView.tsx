@@ -4,7 +4,7 @@ import type { TeamJeopardy } from "../lib/types";
 
 const CAPTIONS: Record<TeamJeopardy["buzzer"], string> = {
   closed: "",
-  bar: "Ждите, пока заполнится полоска",
+  bar: "Ждите, пока заполнится полоска — раньше нажмёте, кнопка заблокируется",
   open: "",
   locked_out: "Рано!",
   answering_me: "Вы отвечаете!",
@@ -21,13 +21,17 @@ export default function BuzzerView({
   now: () => number;
   onBuzz: () => void;
 }) {
-  useTicker(100);
+  useTicker(50);
+  const t = now();
   let status = j.buzzer;
-  // the lockout ends on the client clock without waiting for a new snapshot
-  if (status === "locked_out" && j.locked_until !== null && now() >= j.locked_until) {
-    status = j.bar_ends_at !== null && now() < j.bar_ends_at ? "bar" : "open";
+  // timings are applied on the (server-corrected) client clock without waiting for a snapshot
+  if (status === "locked_out" && j.locked_until !== null && t >= j.locked_until) {
+    status = j.bar_ends_at !== null && t < j.bar_ends_at ? "bar" : "open";
   }
+  if (status === "bar" && j.bar_ends_at !== null && t >= j.bar_ends_at) status = "open";
   const active = status === "open";
+  // during the bar the button looks inactive but still sends: pressing early is a false start (~1 s lock)
+  const pressable = active || status === "bar";
 
   return (
     <div className="play-center">
@@ -35,11 +39,11 @@ export default function BuzzerView({
         <div className="play-muted">{j.label ?? "Ждём вопрос…"}</div>
         <button
           className={`buzzer ${active ? "active" : ""} ${status === "answering_me" ? "me" : ""}`}
-          disabled={!active}
+          disabled={!pressable}
           onPointerDown={(e) => {
             e.preventDefault();
-            if (!active) return;
-            navigator.vibrate?.(50);
+            if (!pressable) return;
+            if (active) navigator.vibrate?.(50);
             onBuzz();
           }}
         >

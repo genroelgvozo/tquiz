@@ -4,6 +4,8 @@ import type { ServerMessage } from "./types";
 export type SocketStatus = "connecting" | "open" | "closed" | "unauthorized";
 
 const RETRY_DELAYS = [1000, 2000, 5000];
+const PING_EVERY_MS = 5000;
+const DEAD_AFTER_MS = 15000; // no message (not even a pong) for this long → the socket is dead
 const STALE_AFTER_HIDDEN_MS = 5000; // phones often keep a dead socket "open" after sleep
 
 /** WebSocket with auto-reconnect. Changing `path` recreates the socket; `null` means "don't connect". */
@@ -20,6 +22,7 @@ export function useSocket<V>(path: string | null, onMessage: (m: ServerMessage<V
     let attempt = 0;
     let timer: number | undefined;
     let hiddenAt = 0;
+    let lastMessageAt = Date.now();
 
     const connect = () => {
       if (stopped || unauthorized) return;
@@ -30,11 +33,14 @@ export function useSocket<V>(path: string | null, onMessage: (m: ServerMessage<V
       setStatus("connecting");
       ws.onopen = () => {
         attempt = 0;
+        lastMessageAt = Date.now();
         setStatus("open");
       };
       ws.onmessage = (e) => {
+        lastMessageAt = Date.now();
         try {
-          handler.current(JSON.parse(e.data));
+          const message = JSON.parse(e.data);
+          if (message?.type !== "pong") handler.current(message);
         } catch {
           /* ignore malformed message */
         }
@@ -76,12 +82,26 @@ export function useSocket<V>(path: string | null, onMessage: (m: ServerMessage<V
       if (!ws || ws.readyState > WebSocket.OPEN) connect();
     };
 
+    // heartbeat: phones and Wi-Fi switches leave sockets that look open but are dead
+    const heartbeat = window.setInterval(() => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      if (Date.now() - lastMessageAt > DEAD_AFTER_MS) {
+        wsRef.current = null;
+        ws.close();
+        connect();
+        return;
+      }
+      ws.send(JSON.stringify({ type: "ping" }));
+    }, PING_EVERY_MS);
+
     connect();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("online", onOnline);
     return () => {
       stopped = true;
       window.clearTimeout(timer);
+      window.clearInterval(heartbeat);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("online", onOnline);
       const ws = wsRef.current;
