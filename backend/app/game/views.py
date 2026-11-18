@@ -99,6 +99,7 @@ class TeamJeopardy(BaseModel):
     label: str | None
     buzzer: BuzzerStatus
     bar_ends_at: float | None
+    bar_seconds: int
     locked_until: float | None
 
 
@@ -271,6 +272,7 @@ def team_view(game: Game, team_id: str) -> TeamView:
             label=_jeopardy_label(rnd, current) if current is not None and j.phase != "board" else None,
             buzzer=jeopardy.buzzer_status(game, team_id),
             bar_ends_at=j.bar_ends_at,
+            bar_seconds=rnd.bar_seconds,
             locked_until=lock if lock is not None and lock > game.now() else None,
         )
     if st.stage == "free" and st.free:

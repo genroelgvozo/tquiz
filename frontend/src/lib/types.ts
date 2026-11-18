@@ -211,6 +211,7 @@ export interface TeamJeopardy {
   label: string | null;
   buzzer: BuzzerStatus;
   bar_ends_at: number | null;
+  bar_seconds: number;
   locked_until: number | null;
 }
 

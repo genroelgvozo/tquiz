@@ -90,3 +90,13 @@ def test_team_free_view_shows_own_answer_and_options():
         if isinstance(step, OpenQuestion):
             v = team_view(g, g.state.teams[1].id).free
             assert v.options == ["x", "y"] and v.number == 2 and v.total == 2 and v.stakes is True
+
+
+def test_team_jeopardy_view_has_bar_seconds():
+    g = new_game(make_quiz([jeopardy_round(1, [("К", [q(1)])], buzzer_mode="bar", bar_seconds=7)]))
+    a = g.join("А").team_id
+    g.apply_admin(StartGame())
+    g.apply_admin(StartRound())
+    g.apply_admin(OpenCell(question_id=1))
+    v = team_view(g, a).jeopardy
+    assert v.buzzer == "bar" and v.bar_seconds == 7
