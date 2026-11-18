@@ -1,0 +1,314 @@
+.scr-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-size: clamp(14px, 1.6vw, 34px);
+  padding: 4vh 4vw;
+}
+
+.scr-logo {
+  position: absolute;
+  top: 2.5vh;
+  left: 2vw;
+}
+
+.scr-logo .logo {
+  width: 8vh;
+  height: 8vh;
+}
+
+.scr-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2vh;
+}
+
+.scr-h1 {
+  font-size: 3.2em;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.scr-h2 {
+  font-size: 1.8em;
+  font-weight: 600;
+}
+
+.scr-h3 {
+  font-size: 1.3em;
+}
+
+.scr-muted {
+  color: var(--dark-muted);
+}
+
+.scr-accent {
+  color: var(--accent);
+}
+
+/* lobby */
+.scr-lobby {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5vw;
+}
+
+.scr-lobby-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+  min-width: 30vw;
+}
+
+.scr-quiz-title {
+  font-size: 1.1em;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.scr-team-list {
+  list-style: none;
+  padding: 0;
+  margin: 2vh 0 0;
+  font-size: 1.2em;
+  line-height: 1.8;
+}
+
+/* board */
+.scr-board-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4vh;
+  padding-top: 6vh;
+}
+
+.scr-board {
+  display: grid;
+  gap: 0.6vh 0.5vw;
+  font-size: 1.3em;
+}
+
+.scr-cell {
+  background: var(--dark-surface);
+  border-radius: 0.4em;
+  padding: 1.4vh 0.5vw;
+  text-align: center;
+}
+
+.scr-cat {
+  text-align: left;
+  padding-left: 1vw;
+  color: #c8c8cc;
+  background: transparent;
+}
+
+.scr-value {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.scr-played,
+.scr-empty {
+  background: transparent;
+  color: #2c2c30;
+}
+
+.scr-scores {
+  display: flex;
+  justify-content: space-around;
+  gap: 2vw;
+  flex-wrap: wrap;
+  color: #ccc;
+  font-size: 1.1em;
+}
+
+.scr-scores b {
+  color: #fff;
+  margin-left: 0.3em;
+}
+
+.scr-scores .scr-accent b {
+  color: var(--accent);
+}
+
+/* question */
+.scr-question {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5vh;
+  padding-top: 6vh;
+  min-height: 0;
+}
+
+.scr-tag {
+  position: absolute;
+  top: 3.5vh;
+  right: 4vw;
+  color: var(--dark-muted);
+  font-size: 0.9em;
+}
+
+.scr-tag-inline {
+  font-size: 1.1em;
+}
+
+.scr-q-text {
+  font-size: 2em;
+  line-height: 1.3;
+  max-width: 90%;
+}
+
+.scr-q-text.dim {
+  color: #8d8d92;
+  font-size: 1.4em;
+}
+
+.scr-q-image {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.scr-q-image img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 0.4em;
+}
+
+.scr-q-audio {
+  font-size: 4em;
+  color: var(--dark-muted);
+}
+
+.scr-options {
+  font-size: 1.5em;
+  line-height: 1.6;
+  margin: 0;
+  padding-left: 1.6em;
+}
+
+.scr-answer {
+  font-size: 2em;
+  font-weight: 600;
+}
+
+.scr-q-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+}
+
+.scr-who {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--dark-bg);
+  padding: 0.5em 1em;
+  border-radius: 0.4em;
+  font-weight: 700;
+  font-size: 1.4em;
+}
+
+/* leaderboard */
+.scr-rank {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: min(70vw, 900px);
+  font-size: 1.5em;
+}
+
+.scr-rank li {
+  display: flex;
+  gap: 1em;
+  padding: 1.2vh 0;
+  border-bottom: 1px solid var(--dark-surface-2);
+}
+
+.scr-rank .n {
+  color: var(--dark-muted);
+  width: 1.5em;
+}
+
+.scr-rank .name {
+  flex: 1;
+  text-align: left;
+}
+
+.scr-rank li.first b {
+  color: var(--accent);
+}
+
+.scr-winner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.scr-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(18 18 20 / 0.97);
+  display: flex;
+  padding: 4vh 4vw;
+}
+
+.scr-mini-qr {
+  position: absolute;
+  right: 2vw;
+  bottom: 3vh;
+}
+
+.scr-offline {
+  position: absolute;
+  bottom: 1vh;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--red);
+  font-size: 0.7em;
+}
+
+.scr-fs-btn {
+  position: absolute;
+  right: 1vw;
+  top: 1vh;
+  background: transparent;
+  border: none;
+  color: #444;
+  font-size: 1.2em;
+}
+
+.scr-fs-btn:hover {
+  color: #aaa;
+}
+
+.scr-gate {
+  position: absolute;
+  inset: 0;
+  background: rgb(18 18 20 / 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scr-gate-btn {
+  background: var(--accent);
+  color: var(--dark-bg);
+  border: none;
+  border-radius: 0.5em;
+  padding: 1em 2em;
+  font-size: 1.4em;
+  font-weight: 700;
+}
