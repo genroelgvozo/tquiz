@@ -25,4 +25,13 @@
 
 ## Команды
 
-_Заполнить после скаффолдинга: запуск бэка и фронта в dev, тесты, сборка._
+Бэкенд (каталог `backend/`, Python через uv):
+
+```bash
+cd backend
+uv sync                      # зависимости
+uv run pytest                # тесты
+ADMIN_PASSWORD=dev SECRET_KEY=dev uv run uvicorn --factory app.main:create_app --reload --port 8000
+```
+
+Приложение запускается только как фабрика (`--factory app.main:create_app`): модульного `app` нет.
