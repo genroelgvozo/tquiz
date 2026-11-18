@@ -14,3 +14,9 @@ def settings(tmp_path):
 def client(settings):
     with TestClient(create_app(settings)) as c:
         yield c
+
+
+@pytest.fixture
+def admin_client(client):
+    assert client.post("/api/auth/login", json={"password": "test"}).status_code == 204
+    return client
