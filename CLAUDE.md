@@ -51,10 +51,10 @@ npm run build    # проверка типов + сборка в frontend/dist
 
 ## Деплой
 
-Docker Compose (`app` + `caddy`), подробно — `docs/deploy.md`. Обновление на VPS:
+Docker Compose (`app` + `caddy`) на VPS, домен **olegquiz.ru**, код в `/opt/tquiz`; подробно — `docs/deploy.md`.
 
-```bash
-cd /opt/tquiz && git pull && docker compose up -d --build
-```
+- Автовыкатка: пуш в `main` → GitHub Actions (`.github/workflows/deploy.yml`): тесты → SSH на сервер → `git pull` + `deploy/remote-update.sh` → проверка `https://olegquiz.ru/api/health`. Секреты: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (+ необязательные `DEPLOY_PORT`, `DEPLOY_KNOWN_HOSTS`).
+- Ручная выкатка: `TQUIZ_SSH=root@<IP> ./deploy/deploy.sh` (сервер берёт код с GitHub — сначала запушь).
+- Первая установка сервера: `ssh root@<IP> 'DOMAIN=olegquiz.ru bash -s' < deploy/server-setup.sh`.
 
 Локальная проверка прод-сборки без занятия 80/443: в `.env` поставить `DOMAIN=:80`, `HTTP_PORT=8088`, `PUBLIC_URL=http://localhost:8088` и запустить `docker compose up -d --build`.

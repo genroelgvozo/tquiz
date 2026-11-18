@@ -2,6 +2,38 @@
 
 Стек: два контейнера из `docker-compose.yml` — `app` (FastAPI + собранный фронт, см. `Dockerfile`) и `caddy` (реверс-прокси с автоматическим HTTPS, см. `Caddyfile`). Настройки — в `.env` (шаблон `.env.example`).
 
+## Быстрый путь (olegquiz.ru)
+
+1. **DNS.** У регистратора A-запись `olegquiz.ru → <IP VPS>`.
+2. **Первая установка одной командой с ноутбука** (ставит Docker, клонирует код в `/opt/tquiz`, создаёт `.env` со сгенерированными паролем и ключом, запускает стек):
+   ```bash
+   ssh root@<IP VPS> 'DOMAIN=olegquiz.ru bash -s' < deploy/server-setup.sh
+   ```
+   В конце скрипт печатает пароль ведущего. Он хранится в `/opt/tquiz/.env`. Свой пароль можно задать сразу: `'DOMAIN=olegquiz.ru ADMIN_PASSWORD=... bash -s'`.
+3. **Автовыкатка.** Каждый пуш в `main` запускает GitHub Actions (`.github/workflows/deploy.yml`): тесты бэка, сборка фронта, затем по SSH `git pull` и пересборка на сервере, затем проверка `https://olegquiz.ru/api/health`. Чтобы включить, добавь в GitHub → Settings → Secrets and variables → Actions:
+
+   | Secret | Значение |
+   |---|---|
+   | `DEPLOY_HOST` | IP или имя VPS |
+   | `DEPLOY_USER` | пользователь SSH (по умолчанию `root`) |
+   | `DEPLOY_SSH_KEY` | приватный ключ, отдельный для деплоя (см. ниже) |
+   | `DEPLOY_PORT` | необязательно, если SSH не на 22 |
+   | `DEPLOY_KNOWN_HOSTS` | необязательно: вывод `ssh-keyscan <IP>`, чтобы закрепить ключ сервера |
+
+   Ключ для деплоя:
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/tquiz_deploy -N "" -C tquiz-deploy
+   ssh-copy-id -i ~/.ssh/tquiz_deploy.pub root@<IP VPS>
+   cat ~/.ssh/tquiz_deploy   # целиком → в секрет DEPLOY_SSH_KEY
+   ```
+   Пока `DEPLOY_HOST` не задан, workflow только гоняет тесты, а шаг выкатки пропускается.
+4. **Ручная выкатка с ноутбука** (тот же `git pull` и пересборка, сервер забирает код с GitHub, поэтому сначала запушь):
+   ```bash
+   TQUIZ_SSH=root@<IP VPS> ./deploy/deploy.sh
+   ```
+
+Ниже — то же самое по шагам вручную и обслуживание.
+
 ## Что нужно
 
 - VPS с Ubuntu 22.04 или 24.04 (подойдёт любой Linux с Docker): 1 vCPU, 1 ГБ RAM, 10 ГБ диска.

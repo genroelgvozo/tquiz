@@ -1,0 +1,75 @@
+name: test-and-deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+      - name: Backend tests
+        working-directory: backend
+        run: |
+          uv sync --frozen
+          uv run pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      DEPLOY_URL: ${{ vars.DEPLOY_URL || 'https://olegquiz.ru' }}
+    steps:
+      - name: Deploy over SSH
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::notice::Secret DEPLOY_HOST is not set — skipping deploy"
+            exit 0
+          fi
+          PORT="${DEPLOY_PORT:-22}"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$PORT" "$DEPLOY_HOST" > ~/.ssh/known_hosts
+          fi
+          ssh -i ~/.ssh/deploy_key -p "$PORT" "${DEPLOY_USER:-root}@$DEPLOY_HOST" \
+            'cd /opt/tquiz && git pull --ff-only && bash deploy/remote-update.sh'
+
+      - name: Public health check
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then exit 0; fi
+          for _ in $(seq 1 20); do
+            if curl -fsS "$DEPLOY_URL/api/health"; then exit 0; fi
+            sleep 3
+          done
+          echo "::error::$DEPLOY_URL/api/health did not answer"
+          exit 1
