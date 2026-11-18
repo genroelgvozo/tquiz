@@ -48,3 +48,13 @@ npm run build    # проверка типов + сборка в frontend/dist
 - Если порт 8000 занят: запусти бэк на другом порту и укажи его прокси: `TQUIZ_BACKEND=http://localhost:8010 npm run dev`.
 - Играть с телефонов в dev: бэк запускается с `PUBLIC_URL=http://<IP ноутбука>:5173`, и телефоны в той же Wi-Fi открывают QR из лобби.
 - Прод-сборку раздаёт сам бэк, если задан `STATIC_DIR=../frontend/dist`.
+
+## Деплой
+
+Docker Compose (`app` + `caddy`), подробно — `docs/deploy.md`. Обновление на VPS:
+
+```bash
+cd /opt/tquiz && git pull && docker compose up -d --build
+```
+
+Локальная проверка прод-сборки без занятия 80/443: в `.env` поставить `DOMAIN=:80`, `HTTP_PORT=8088`, `PUBLIC_URL=http://localhost:8088` и запустить `docker compose up -d --build`.
