@@ -24,3 +24,6 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# typescript build info
+*.tsbuildinfo
