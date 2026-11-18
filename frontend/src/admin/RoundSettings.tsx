@@ -1,4 +1,5 @@
 import type { RoundData } from "../lib/types";
+import { confirmDialog } from "./dialogs";
 import type { Mutate } from "./QuizEditor";
 
 const DISCUSS_PRESETS = [30, 60];
@@ -108,7 +109,13 @@ export default function RoundSettings({
       <button
         className="btn no"
         onClick={async () => {
-          if (!window.confirm(`Удалить тур «${round.title}» со всеми вопросами?`)) return;
+          const ok = await confirmDialog({
+            title: `Удалить тур «${round.title}»?`,
+            message: "Вместе с ним удалятся все его вопросы.",
+            confirmLabel: "Удалить",
+            danger: true,
+          });
+          if (!ok) return;
           if (await mutate("DELETE", `/api/rounds/${round.id}`)) onDeleted();
         }}
       >

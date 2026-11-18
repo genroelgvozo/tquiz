@@ -384,3 +384,14 @@ fieldset.plain {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- dialogs (Mantine) ---------- */
+
+.round-kind-card {
+  border-color: var(--light-border);
+}
+
+.round-kind-card[data-checked] {
+  border-color: var(--light-text);
+  background: var(--light-surface-2);
+}

@@ -153,23 +153,6 @@
   color: var(--ok-fg);
 }
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgb(0 0 0 / 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-
-.modal {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
-}
-
 .light-timer .phase-timer-hint,
 .light-timer .phase-timer.status-finished .phase-timer-label,
 .light-timer .phase-timer.status-paused .phase-timer-label {

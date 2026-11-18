@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { confirmDialog, promptDialog } from "../dialogs";
 import type { PanelProps } from "./types";
 
 export default function TeamsPanel({ view, send }: PanelProps) {
@@ -63,8 +64,8 @@ export default function TeamsPanel({ view, send }: PanelProps) {
             <button
               className="btn ghost small"
               title="Переименовать"
-              onClick={() => {
-                const name = window.prompt("Новое название", t.name);
+              onClick={async () => {
+                const name = await promptDialog({ title: "Переименовать команду", label: "Название", initial: t.name });
                 if (name && name !== t.name) send({ type: "rename_team", team_id: t.id, name });
               }}
             >
@@ -73,7 +74,15 @@ export default function TeamsPanel({ view, send }: PanelProps) {
             <button
               className="btn ghost small"
               title="Удалить"
-              onClick={() => window.confirm(`Удалить команду «${t.name}»?`) && send({ type: "delete_team", team_id: t.id })}
+              onClick={async () => {
+                const ok = await confirmDialog({
+                  title: `Удалить команду «${t.name}»?`,
+                  message: "Команда пропадёт из игры вместе с очками.",
+                  confirmLabel: "Удалить",
+                  danger: true,
+                });
+                if (ok) send({ type: "delete_team", team_id: t.id });
+              }}
             >
               ✕
             </button>

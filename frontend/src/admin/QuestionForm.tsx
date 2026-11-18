@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError, uploadMedia } from "../lib/api";
 import type { QuestionData, RoundData } from "../lib/types";
+import { confirmDialog } from "./dialogs";
 import type { Mutate } from "./QuizEditor";
 
 const MAX_OPTIONS = 4;
@@ -196,7 +197,7 @@ export default function QuestionForm({
       <button
         className="btn no"
         onClick={async () => {
-          if (!window.confirm("Удалить вопрос?")) return;
+          if (!(await confirmDialog({ title: "Удалить вопрос?", confirmLabel: "Удалить", danger: true }))) return;
           if (await mutate("DELETE", path)) onDeleted();
         }}
       >

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import type { EditorPayload, QuizListItem } from "../lib/types";
+import { confirmDialog, promptDialog } from "./dialogs";
 import { startGame } from "./startGame";
 import { useToast } from "./useToast";
 
@@ -25,7 +26,7 @@ export default function QuizList() {
 
   const create = () =>
     run(async () => {
-      const title = window.prompt("Название квиза", "Новый квиз");
+      const title = await promptDialog({ title: "Новый квиз", label: "Название", initial: "Новый квиз", confirmLabel: "Создать" });
       if (!title) return;
       const p = await api<EditorPayload>("POST", "/api/quizzes", { title });
       navigate(`/admin/quiz/${p.quiz.id}`);
@@ -39,7 +40,13 @@ export default function QuizList() {
 
   const remove = (q: QuizListItem) =>
     run(async () => {
-      if (!window.confirm(`Удалить квиз «${q.title}»?`)) return;
+      const ok = await confirmDialog({
+        title: `Удалить квиз «${q.title}»?`,
+        message: "Все туры и вопросы квиза удалятся без возможности восстановления.",
+        confirmLabel: "Удалить",
+        danger: true,
+      });
+      if (!ok) return;
       await api("DELETE", `/api/quizzes/${q.id}`);
       load();
     });

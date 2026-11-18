@@ -1,9 +1,12 @@
+import { Button, Modal, Stack, Text } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Qr } from "../../components/Qr";
 import { api, ApiError } from "../../lib/api";
 import { useSocket } from "../../lib/socket";
 import type { AdminCommand, AdminView, ServerMessage } from "../../lib/types";
+import { confirmDialog } from "../dialogs";
+import { ROUND_KINDS } from "../roundKinds";
 import { useToast } from "../useToast";
 import "./console.css";
 import FreePanel from "./FreePanel";
@@ -42,7 +45,13 @@ export default function Console() {
   }, []);
 
   const closeGame = async () => {
-    if (!window.confirm("Закрыть игру? Экран и телефоны вернутся в ожидание.")) return;
+    const ok = await confirmDialog({
+      title: "Закрыть игру?",
+      message: "Экран и телефоны вернутся в ожидание.",
+      confirmLabel: "Закрыть игру",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api("POST", "/api/game/stop");
     } catch (e) {
@@ -74,7 +83,7 @@ export default function Console() {
     panel = (
       <div className="card console-pane">
         <p className="label">
-          Тур {st.round_index + 1} из {view.quiz.rounds.length} · {round.kind === "jeopardy" ? "своя игра" : "свободный ввод"}
+          Тур {st.round_index + 1} из {view.quiz.rounds.length} · {ROUND_KINDS[round.kind].title}
         </p>
         <h3 style={{ marginTop: 0 }}>{round.title}</h3>
         <p className="muted">На экране заставка тура.</p>
@@ -133,22 +142,37 @@ export default function Console() {
         {inGame && hasNextRound && (
           <button
             className="btn"
-            onClick={() => {
+            onClick={async () => {
               const unfinished =
                 (st.stage === "free" && st.free?.phase === "question") ||
                 (st.stage === "jeopardy" && round !== undefined && st.jeopardy !== null &&
                   st.jeopardy.played.length < round.categories.reduce((n, c) => n + c.questions.length, 0));
-              const text = unfinished
-                ? "Тур не закончен (есть неразобранные ответы или несыгранные вопросы). Перейти к следующему туру? Вернуться будет нельзя."
-                : "Перейти к следующему туру?";
-              if (st.stage === "intro" || window.confirm(text)) send({ type: "next_round" });
+              const ok =
+                st.stage === "intro" ||
+                (await confirmDialog(
+                  unfinished
+                    ? {
+                        title: "Тур не закончен",
+                        message: "Есть неразобранные ответы или несыгранные вопросы. Перейти к следующему туру? Вернуться будет нельзя.",
+                        confirmLabel: "Перейти",
+                        danger: true,
+                      }
+                    : { title: "Перейти к следующему туру?", confirmLabel: "Перейти" },
+                ));
+              if (ok) send({ type: "next_round" });
             }}
           >
             След. тур →
           </button>
         )}
         {st.stage !== "finished" && st.stage !== "lobby" && (
-          <button className="btn" onClick={() => window.confirm("Завершить игру и показать победителя?") && send({ type: "finish_game" })}>
+          <button
+            className="btn"
+            onClick={async () => {
+              const ok = await confirmDialog({ title: "Завершить игру и показать победителя?", confirmLabel: "Завершить" });
+              if (ok) send({ type: "finish_game" });
+            }}
+          >
             Завершить игру
           </button>
         )}
@@ -164,18 +188,19 @@ export default function Console() {
         <TeamsPanel view={view} send={send} />
       </div>
 
-      {showScreenQr && screenUrl && (
-        <div className="modal-backdrop" onClick={() => setShowScreenQr(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <p className="label">Откройте эту ссылку на ТВ / проекторе</p>
+      <Modal opened={showScreenQr && !!screenUrl} onClose={() => setShowScreenQr(false)} title="Откройте ссылку на ТВ или проекторе">
+        {screenUrl && (
+          <Stack align="center">
             <Qr value={screenUrl} size={260} />
-            <p style={{ wordBreak: "break-all", maxWidth: 320 }}>{screenUrl}</p>
-            <button className="btn" onClick={() => setShowScreenQr(false)}>
+            <Text size="sm" style={{ wordBreak: "break-all" }} ta="center">
+              {screenUrl}
+            </Text>
+            <Button variant="default" onClick={() => setShowScreenQr(false)}>
               Закрыть
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+          </Stack>
+        )}
+      </Modal>
       {toast}
     </main>
   );

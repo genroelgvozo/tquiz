@@ -1,3 +1,6 @@
+import "@mantine/core/styles.css";
+import { createTheme, MantineProvider } from "@mantine/core";
+import { ModalsProvider } from "@mantine/modals";
 import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { api } from "../lib/api";
@@ -7,7 +10,24 @@ import Login from "./Login";
 import QuizEditor from "./QuizEditor";
 import QuizList from "./QuizList";
 
+const theme = createTheme({
+  primaryColor: "dark",
+  fontFamily: "var(--font)",
+  defaultRadius: "md",
+});
+
+/** Admin routes are lazy-loaded (see App.tsx), so Mantine never reaches the phones or the hall screen. */
 export default function AdminApp() {
+  return (
+    <MantineProvider theme={theme} forceColorScheme="light">
+      <ModalsProvider modalProps={{ centered: true }}>
+        <AdminRoutes />
+      </ModalsProvider>
+    </MantineProvider>
+  );
+}
+
+function AdminRoutes() {
   const [admin, setAdmin] = useState<boolean | null>(null);
 
   const check = () => {

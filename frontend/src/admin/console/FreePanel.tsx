@@ -1,5 +1,6 @@
 import { PhaseTimerBar } from "../../components/PhaseTimerBar";
 import { useServerClock } from "../../lib/clock";
+import { confirmDialog } from "../dialogs";
 import type { PanelProps } from "./types";
 
 export default function FreePanel({ view, send }: PanelProps) {
@@ -31,11 +32,16 @@ export default function FreePanel({ view, send }: PanelProps) {
         <span style={{ flex: 1 }} />
         <button
           className={`btn ${free.index >= total - 1 ? "primary" : ""}`}
-          onClick={() => {
+          onClick={async () => {
             const early = free.index < total - 1 || (t.status !== "finished" && t.status !== "idle");
-            if (!early || window.confirm("Начать разбор? Вернуться к вопросам этого тура будет нельзя.")) {
-              send({ type: "start_review" });
-            }
+            const ok =
+              !early ||
+              (await confirmDialog({
+                title: "Начать разбор?",
+                message: "Вернуться к вопросам этого тура будет нельзя.",
+                confirmLabel: "Начать разбор",
+              }));
+            if (ok) send({ type: "start_review" });
           }}
         >
           Начать разбор

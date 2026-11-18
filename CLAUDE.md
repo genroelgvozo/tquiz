@@ -12,6 +12,9 @@
 
 - Бэкенд: Python, FastAPI (uvicorn), WebSocket, SQLite. Медиа хранятся файлами в `data/media`.
 - Фронтенд: React, Vite, TypeScript. Одно SPA с маршрутами `/admin`, `/screen`, `/play`. В проде его раздаёт FastAPI.
+- Админка на Mantine 8 (`@mantine/core`, `@mantine/modals`). Mantine 9 требует React 19, поэтому пока восьмая версия. Админка грузится отдельным чанком (`React.lazy` в `App.tsx`), чтобы Mantine не попадал на телефоны и экран. В `/play` и `/screen` Mantine не импортируй.
+- В админке никаких `window.confirm/prompt/alert`: нативный диалог снимает полноэкранный режим с окна экрана, если всё открыто на одном компьютере. Используй `src/admin/dialogs.tsx` (`confirmDialog`, `promptDialog`, `newRoundDialog`).
+- Названия и описания типов туров для админки лежат в `src/admin/roundKinds.ts`. Окно «Новый тур» строится по этому списку. Если добавить тип в `RoundKind`, компилятор не даст собрать проект, пока тип не описан там.
 - Деплой: docker compose (приложение и Caddy с автоматическим HTTPS).
 
 ## Принципы

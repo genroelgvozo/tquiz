@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, uploadMedia } from "../lib/api";
 import type { EditorPayload, QuestionData, RoundData } from "../lib/types";
+import { confirmDialog, newRoundDialog, promptDialog } from "./dialogs";
 import QuestionForm from "./QuestionForm";
 import RoundSettings from "./RoundSettings";
+import { ROUND_KINDS } from "./roundKinds";
 import { startGame } from "./startGame";
 import { useToast } from "./useToast";
 
@@ -58,12 +60,28 @@ export default function QuizEditor() {
   }
 
   const addRound = async () => {
-    const kind = window.confirm("Создать тур «Своя игра»?\nОК — своя игра, Отмена — свободный ввод")
-      ? "jeopardy"
-      : "free";
-    const title = window.prompt("Название тура", kind === "jeopardy" ? "Своя игра" : "Свободный ввод");
-    if (title === null) return;
-    await mutate("POST", `/api/quizzes/${quizId}/rounds`, { title, kind });
+    const choice = await newRoundDialog();
+    if (choice) await mutate("POST", `/api/quizzes/${quizId}/rounds`, choice);
+  };
+
+  const renameCategory = async (categoryId: number, current: string) => {
+    const name = await promptDialog({ title: "Переименовать категорию", label: "Название", initial: current });
+    if (name !== null && name !== current) mutate("PATCH", `/api/categories/${categoryId}`, { name });
+  };
+
+  const deleteCategory = async (categoryId: number, name: string) => {
+    const ok = await confirmDialog({
+      title: `Удалить категорию «${name}»?`,
+      message: "Вместе с ней удалятся все её вопросы.",
+      confirmLabel: "Удалить",
+      danger: true,
+    });
+    if (ok) mutate("DELETE", `/api/categories/${categoryId}`);
+  };
+
+  const addCategory = async (roundId: number) => {
+    const name = await promptDialog({ title: "Новая категория", label: "Название", confirmLabel: "Добавить" });
+    if (name !== null) mutate("POST", `/api/rounds/${roundId}/categories`, { name });
   };
 
   const addQuestion = async (round: RoundData, categoryId?: number) => {
@@ -148,7 +166,7 @@ export default function QuizEditor() {
                 <span className="grow tree-round-title">
                   {i + 1}. {r.title || "Без названия"}
                 </span>
-                <span className="chip">{r.kind === "jeopardy" ? "своя" : "ввод"}</span>
+                <span className="chip">{ROUND_KINDS[r.kind].short}</span>
                 {r.kind === "free" && r.stakes && <span className="chip yellow">ставки</span>}
                 <button className="btn ghost small" title="Выше" onClick={(e) => (e.stopPropagation(), mutate("POST", `/api/rounds/${r.id}/move`, { delta: -1 }))}>
                   ↑
@@ -167,10 +185,7 @@ export default function QuizEditor() {
                           <button
                             className="btn ghost small"
                             title="Переименовать"
-                            onClick={() => {
-                              const name = window.prompt("Название категории", c.name);
-                              if (name !== null) mutate("PATCH", `/api/categories/${c.id}`, { name });
-                            }}
+                            onClick={() => renameCategory(c.id, c.name)}
                           >
                             ✎
                           </button>
@@ -183,7 +198,7 @@ export default function QuizEditor() {
                           <button
                             className="btn ghost small"
                             title="Удалить категорию"
-                            onClick={() => window.confirm(`Удалить категорию «${c.name}» со всеми вопросами?`) && mutate("DELETE", `/api/categories/${c.id}`)}
+                            onClick={() => deleteCategory(c.id, c.name)}
                           >
                             ✕
                           </button>
@@ -209,10 +224,7 @@ export default function QuizEditor() {
                     ))}
                     <div
                       className="tree-item muted"
-                      onClick={() => {
-                        const name = window.prompt("Название категории");
-                        if (name) mutate("POST", `/api/rounds/${r.id}/categories`, { name });
-                      }}
+                      onClick={() => addCategory(r.id)}
                     >
                       + категория
                     </div>
