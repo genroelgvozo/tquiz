@@ -1,0 +1,128 @@
+<style>
+  .adm { background:#fff; color:#1d1d1f; border:1px solid #d1d1d6; border-radius:10px; font-family:-apple-system,system-ui,sans-serif; font-size:12px; overflow:hidden; margin-bottom:8px; }
+  .adm .hdr { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; border-bottom:1px solid #e5e5e7; background:#fafafa; }
+  .adm .hdr b { font-size:13px; }
+  .adm .body { display:grid; grid-template-columns:200px 1fr 210px; min-height:300px; }
+  .adm .col { padding:12px; border-right:1px solid #eee; }
+  .adm .col:last-child { border-right:none; }
+  .lbl { font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:#86868b; margin:0 0 6px; }
+  .b { display:inline-block; border:1px solid #d1d1d6; border-radius:6px; padding:5px 9px; margin:2px 2px 2px 0; background:#fff; }
+  .b.pri { background:#1d1d1f; color:#fff; border-color:#1d1d1f; }
+  .b.ok { background:#e9f8ee; border-color:#34c759; color:#1a7f37; }
+  .b.no { background:#fdecec; border-color:#ff3b30; color:#c62828; }
+  .mini { display:grid; grid-template-columns:1.3fr repeat(5,1fr); gap:2px; font-size:10px; }
+  .mini div { background:#f2f2f4; text-align:center; padding:4px 0; border-radius:3px; }
+  .mini .c { text-align:left; padding-left:4px; background:none; color:#555; }
+  .mini .u { color:#ccc; background:none; }
+  .mini .cur { background:#1d1d1f; color:#fff; }
+  .qbox { background:#f7f7f9; border-radius:8px; padding:10px; margin-bottom:10px; line-height:1.4; }
+  .qbox .a { margin-top:6px; color:#1a7f37; }
+  .team { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #f0f0f0; }
+  .team .pm { color:#86868b; font-size:11px; }
+  .buzzq { border:1px solid #f5c542; background:#fffbea; border-radius:8px; padding:8px; margin-bottom:10px; }
+  .row { display:grid; grid-template-columns:110px 1fr 90px; gap:6px; align-items:center; padding:6px 0; border-bottom:1px solid #f0f0f0; }
+  .chip { font-size:10px; border-radius:10px; padding:1px 6px; background:#f2f2f4; color:#555; }
+  .chip.y { background:#fff3c4; color:#8a6d00; }
+  .tree div { padding:4px 6px; border-radius:4px; }
+  .tree .on { background:#f2f2f4; font-weight:600; }
+  .field { border:1px solid #d1d1d6; border-radius:6px; padding:6px 8px; margin-bottom:8px; color:#555; background:#fff; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .cap { font-size:13px; color:var(--text-secondary); margin:4px 2px 24px; }
+</style>
+
+<h2>Админка ведущего</h2>
+<p class="subtitle">Светлая, плотная, всё под рукой без прокрутки. Справа всегда команды и счёт с ручной правкой.</p>
+
+<!-- 1. Своя игра -->
+<div class="adm">
+  <div class="hdr"><b>Пульт · Тур 2 · Своя игра</b><span><span class="b">Экран: вопрос ▾</span> <span class="b">Рейтинг на экран</span> <span class="b">След. тур →</span></span></div>
+  <div class="body">
+    <div class="col">
+      <p class="lbl">Сетка — клик = открыть вопрос</p>
+      <div class="mini">
+        <div class="c">Кино</div><div class="u">100</div><div>200</div><div class="cur">300</div><div class="u">400</div><div>500</div>
+        <div class="c">Музыка</div><div>100</div><div class="u">200</div><div>300</div><div>400</div><div>500</div>
+        <div class="c">История</div><div>100</div><div>200</div><div>300</div><div>400</div><div>500</div>
+        <div class="c">Спорт</div><div class="u">100</div><div class="u">200</div><div>300</div><div>400</div><div>500</div>
+      </div>
+      <p class="lbl" style="margin-top:14px">Выбирает</p>
+      <div>Котики <span class="pm">(сменить ▾)</span></div>
+    </div>
+    <div class="col">
+      <p class="lbl">Кино · 300</p>
+      <div class="qbox">В каком фильме звучит эта мелодия?<div class="a">Ответ: «Брат»</div></div>
+      <div style="margin-bottom:10px"><span class="b">▶ Музыка</span><span class="b">⏸</span><span class="b">↺ С начала</span> <span class="chip">кнопки: после полоски 5 с</span></div>
+      <div class="buzzq">
+        <div class="lbl" style="color:#8a6d00">Нажали первыми</div>
+        <div style="font-size:14px;margin-bottom:6px"><b>Котики</b> <span class="pm">+0.00 с</span> &nbsp; <span class="pm">Бобры +0.41 с</span></div>
+        <span class="b ok">✓ Верно +300</span><span class="b no">✗ Неверно −300</span>
+      </div>
+      <span class="b">Показать ответ</span><span class="b pri">К сетке →</span>
+    </div>
+    <div class="col">
+      <p class="lbl">Команды</p>
+      <div class="team"><span>Бобры-математики</span><span><b>700</b> <span class="pm">± </span></span></div>
+      <div class="team"><span>Котики</span><span><b>500</b> <span class="pm">± </span></span></div>
+      <div class="team"><span>Без названия</span><span><b>300</b> <span class="pm">± </span></span></div>
+      <p class="lbl" style="margin-top:14px">Настройки тура</p>
+      <div class="pm">Минус за неверный: вкл</div>
+    </div>
+  </div>
+</div>
+<p class="cap">1. Пульт своей игры: сетка → вопрос (ответ ты видишь всегда) → кто нажал → ✓/✗ → обратно к сетке. Секрет: при открытии появится «Кому передать?» со списком команд.</p>
+
+<!-- 2. Разбор свободного тура -->
+<div class="adm">
+  <div class="hdr"><b>Пульт · Тур 3 · Разбор</b><span><span class="b">← Вопрос 3</span> <b style="margin:0 6px">4 / 10</b> <span class="b">Вопрос 5 →</span> <span class="b">Рейтинг на экран</span></span></div>
+  <div class="body" style="grid-template-columns:1fr 210px">
+    <div class="col">
+      <div class="qbox">Что изображено на этой картине и кто её автор?<div class="a">Ответ: «Грачи прилетели», Саврасов · номинал 1</div></div>
+      <div class="row"><b>Бобры</b><span>Грачи прилетели, Саврасов</span><span><span class="b ok">✓</span><span class="b">✗</span></span></div>
+      <div class="row"><b>Котики</b><span>Саврасов грачи <span class="chip y">ставка</span></span><span><span class="b">✓</span><span class="b">✗</span></span></div>
+      <div class="row"><b>Без названия</b><span style="color:#aaa">— нет ответа —</span><span><span class="b">✓</span><span class="b no">✗</span></span></div>
+      <p class="pm" style="margin-top:8px">Совпадение с эталоном отмечено ✓ заранее — ты только подтверждаешь или правишь.</p>
+    </div>
+    <div class="col">
+      <p class="lbl">Команды</p>
+      <div class="team"><span>Бобры-математики</span><b>1 240</b></div>
+      <div class="team"><span>Котики</span><b>980</b></div>
+      <div class="team"><span>Без названия</span><b>760</b></div>
+    </div>
+  </div>
+</div>
+<p class="cap">2. Разбор свободного тура: на общем экране вопрос + ответ, у тебя ответы команд и ✓/✗. Во время самого вопроса тут видно, кто уже сдал ответ, и кнопки «пауза / +10 с».</p>
+
+<!-- 3. Редактор -->
+<div class="adm">
+  <div class="hdr"><b>Квиз «Пятничный» · редактор</b><span><span class="b">Загрузить эмблему</span> <span class="b pri">Начать игру</span></span></div>
+  <div class="body" style="grid-template-columns:200px 1fr">
+    <div class="col tree">
+      <p class="lbl">Туры</p>
+      <div>1. Разминка <span class="chip">ввод</span></div>
+      <div class="on">2. Своя игра <span class="chip">своя</span></div>
+      <div style="padding-left:14px">Кино · 5</div>
+      <div style="padding-left:14px">Музыка · 5</div>
+      <div>3. Картины <span class="chip">ввод</span> <span class="chip y">ставки</span></div>
+      <div style="margin-top:8px;color:#0071e3">+ тур</div>
+    </div>
+    <div class="col">
+      <p class="lbl">Вопрос · Кино · 300</p>
+      <div class="two">
+        <div class="field">Тип: обычный ▾ <span class="pm">(обычный / секрет)</span></div>
+        <div class="field">Стоимость: 300</div>
+      </div>
+      <div class="field" style="height:38px">Текст: В каком фильме звучит эта мелодия?</div>
+      <div class="field">Ответ: «Брат»</div>
+      <div class="two">
+        <div class="field">📎 Медиа: brat.mp3 &nbsp;<span class="pm">картинка / аудио</span></div>
+        <div class="field">Варианты: — <span class="pm">(для ввода: до 4)</span></div>
+      </div>
+      <p class="lbl" style="margin-top:6px">Настройки тура</p>
+      <div class="two">
+        <div class="field">Кнопка: после полоски 5 с ▾ <span class="pm">(сразу / полоска)</span></div>
+        <div class="field">Минус за неверный: ☑</div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="cap">3. Редактор: туры слева, вопрос справа. У свободного тура в настройках — время обсуждения + ввода и галка «ставки».</p>

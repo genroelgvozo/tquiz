@@ -1,0 +1,26 @@
+# brainstorming scratch
+.superpowers/
+
+# env / secrets
+.env
+*.env.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+
+# runtime data (sqlite, uploaded media)
+data/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/

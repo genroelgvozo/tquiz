@@ -1,0 +1,183 @@
+<style>
+  .scr { background:#121214; color:#f2f2f2; border-radius:10px; aspect-ratio:16/9; position:relative; padding:18px 22px; font-family:-apple-system,system-ui,sans-serif; overflow:hidden; }
+  .scr .logo { position:absolute; top:12px; left:14px; width:34px; height:34px; border-radius:50%; border:2px dashed #666; font-size:9px; color:#888; display:flex; align-items:center; justify-content:center; }
+  .scr .tag { position:absolute; top:14px; right:16px; font-size:11px; color:#888; }
+  .acc { color:#f5c542; }
+  .grid4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px; margin-bottom:28px; }
+  .cap { font-size:13px; color:var(--text-secondary); margin:6px 2px 0; }
+  .board { display:grid; grid-template-columns:1.4fr repeat(5,1fr); gap:4px; margin-top:34px; font-size:11px; }
+  .board div { background:#1f1f24; padding:7px 4px; text-align:center; border-radius:4px; }
+  .board .cat { text-align:left; padding-left:8px; color:#bbb; }
+  .board .used { background:transparent; color:#333; }
+  .board .val { color:#f5c542; font-weight:600; }
+  .scores { position:absolute; bottom:12px; left:22px; right:22px; display:flex; justify-content:space-between; font-size:12px; color:#ccc; }
+  .scores b { color:#fff; }
+  .q { margin-top:40px; font-size:17px; line-height:1.35; max-width:85%; }
+  .img { background:#26262c; border-radius:6px; height:70px; width:120px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#777; margin-top:12px; }
+  .bar { position:absolute; bottom:16px; left:22px; right:22px; height:8px; border-radius:4px; background:#26262c; display:flex; overflow:hidden; }
+  .bar .p1 { background:#f5c542; width:45%; }
+  .bar .p2 { background:#4da3ff; width:0%; }
+  .bar .rest1 { background:#3a3424; width:22%; }
+  .bar .rest2 { background:#1e3550; width:33%; }
+  .barlbl { position:absolute; bottom:30px; left:22px; right:22px; display:flex; justify-content:space-between; font-size:12px; }
+  .ans { position:absolute; bottom:18px; left:22px; font-size:20px; }
+  .who { position:absolute; bottom:18px; right:22px; font-size:14px; background:#f5c542; color:#121214; padding:6px 12px; border-radius:6px; font-weight:600; }
+  .qr { width:110px; height:110px; background:repeating-conic-gradient(#fff 0 25%, #121214 0 50%) 0 0/14px 14px; border:8px solid #fff; border-radius:4px; }
+  .rank { margin-top:36px; font-size:15px; }
+  .rank div { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #26262c; max-width:70%; margin:0 auto; }
+  .rank .n { color:#888; width:24px; }
+
+  .phones { display:flex; gap:16px; flex-wrap:wrap; }
+  .ph { width:170px; height:320px; background:#121214; color:#f2f2f2; border-radius:22px; border:3px solid #333; padding:16px 12px; display:flex; flex-direction:column; font-family:-apple-system,system-ui,sans-serif; font-size:12px; }
+  .ph .top { display:flex; justify-content:space-between; color:#888; font-size:10px; margin-bottom:10px; }
+  .ph .mid { flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px; }
+  .ph input, .ph .inp { background:#1f1f24; border:1px solid #333; color:#ddd; border-radius:8px; padding:9px; font-size:12px; width:100%; box-sizing:border-box; }
+  .ph .btn { background:#f5c542; color:#121214; border-radius:8px; padding:9px; text-align:center; font-weight:600; }
+  .ph .btn.dim { background:#26262c; color:#666; }
+  .buzz { width:120px; height:120px; border-radius:50%; background:#e5484d; margin:0 auto; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; box-shadow:0 0 0 8px #3a1517; }
+  .opt { background:#1f1f24; border:1px solid #333; border-radius:8px; padding:9px; }
+  .opt.sel { border-color:#f5c542; color:#f5c542; }
+  .toggle { display:flex; align-items:center; gap:8px; color:#ccc; }
+  .toggle span.sw { width:30px; height:16px; border-radius:8px; background:#f5c542; position:relative; }
+  .toggle span.sw::after { content:''; position:absolute; right:2px; top:2px; width:12px; height:12px; border-radius:50%; background:#121214; }
+  .muted { color:#777; text-align:center; }
+</style>
+
+<h2>Что видят игроки</h2>
+<p class="subtitle">Набросок: тёмный фон (лучше для проектора/ТВ), один акцентный цвет, крупный текст. Эмблема — кружок в левом верхнем углу на всех экранах зала.</p>
+
+<h3>Общий экран</h3>
+<div class="grid4">
+  <div>
+    <div class="scr">
+      <div class="logo">лого</div>
+      <div style="display:flex;gap:28px;align-items:center;margin-top:30px;">
+        <div class="qr"></div>
+        <div>
+          <div style="font-size:20px;margin-bottom:6px;">Сканируйте, чтобы войти</div>
+          <div style="font-size:12px;color:#888;margin-bottom:12px;">quiz.example.ru</div>
+          <div style="font-size:13px;color:#ccc;line-height:1.8">✓ Бобры-математики<br>✓ Без названия<br>✓ Котики</div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">1. Лобби: QR + список подключившихся команд</p>
+  </div>
+
+  <div>
+    <div class="scr">
+      <div class="logo">лого</div>
+      <div class="tag">Тур 2 · Своя игра</div>
+      <div class="board">
+        <div class="cat">Кино</div><div class="used">100</div><div class="val">200</div><div class="val">300</div><div class="used">400</div><div class="val">500</div>
+        <div class="cat">Музыка</div><div class="val">100</div><div class="used">200</div><div class="val">300</div><div class="val">400</div><div class="val">500</div>
+        <div class="cat">История</div><div class="val">100</div><div class="val">200</div><div class="val">300</div><div class="val">400</div><div class="val">500</div>
+        <div class="cat">Спорт</div><div class="used">100</div><div class="used">200</div><div class="val">300</div><div class="val">400</div><div class="val">500</div>
+      </div>
+      <div class="scores"><span>Бобры <b>700</b></span><span>Котики <b>500</b></span><span class="acc">▶ Без названия <b>300</b></span></div>
+    </div>
+    <p class="cap">2. Сетка своей игры: сыгранные гаснут, внизу счёт и кто выбирает</p>
+  </div>
+
+  <div>
+    <div class="scr">
+      <div class="logo">лого</div>
+      <div class="tag">Кино · 300</div>
+      <div class="q">В каком фильме звучит эта мелодия?</div>
+      <div class="img">♪ играет музыка</div>
+      <div class="who">Отвечает: Котики</div>
+    </div>
+    <p class="cap">3. Своя игра: вопрос, после нажатия — кто отвечает</p>
+  </div>
+
+  <div>
+    <div class="scr">
+      <div class="logo">лого</div>
+      <div class="tag">Тур 3 · Вопрос 4 из 10</div>
+      <div class="q">Что изображено на этой картине и кто её автор?</div>
+      <div class="img">картинка</div>
+      <div class="barlbl"><span class="acc">Обсуждение · 0:27</span><span style="color:#4da3ff">Ввод ответа · 0:20</span></div>
+      <div class="bar"><div class="p1"></div><div class="rest1"></div><div class="rest2"></div></div>
+    </div>
+    <p class="cap">4. Свободный ввод: таймер из двух фаз разного цвета</p>
+  </div>
+
+  <div>
+    <div class="scr">
+      <div class="logo">лого</div>
+      <div class="tag">Разбор · Вопрос 4</div>
+      <div class="q" style="color:#999;font-size:14px;">Что изображено на этой картине и кто её автор?</div>
+      <div class="ans">Ответ: <span class="acc">«Грачи прилетели», Саврасов</span></div>
+    </div>
+    <p class="cap">5. Ответ (в своей игре — сразу, в свободном — на разборе)</p>
+  </div>
+
+  <div>
+    <div class="scr">
+      <div class="logo">лого</div>
+      <div class="tag">После тура 2</div>
+      <div class="rank">
+        <div><span class="n">1</span><span style="flex:1">Бобры-математики</span><b class="acc">1 240</b></div>
+        <div><span class="n">2</span><span style="flex:1">Котики</span><b>980</b></div>
+        <div><span class="n">3</span><span style="flex:1">Без названия</span><b>760</b></div>
+      </div>
+    </div>
+    <p class="cap">6. Рейтинг между турами</p>
+  </div>
+</div>
+
+<h3>Телефон команды</h3>
+<div class="phones">
+  <div>
+    <div class="ph">
+      <div class="top"><span>Квиз</span><span></span></div>
+      <div class="mid">
+        <div style="font-size:14px;">Название команды</div>
+        <div class="inp">Котики</div>
+        <div class="btn">Войти</div>
+      </div>
+    </div>
+    <p class="cap">Вход по QR</p>
+  </div>
+  <div>
+    <div class="ph">
+      <div class="top"><span>Котики</span><span>0</span></div>
+      <div class="mid"><div class="muted">Ждём начала игры…</div></div>
+    </div>
+    <p class="cap">Ожидание</p>
+  </div>
+  <div>
+    <div class="ph">
+      <div class="top"><span>Котики</span><span>500</span></div>
+      <div class="mid">
+        <div class="muted">Кино · 300</div>
+        <div class="buzz">ЖМИ</div>
+        <div class="muted" style="font-size:10px">неактивна, пока ведущий не дал старт</div>
+      </div>
+    </div>
+    <p class="cap">Своя игра: кнопка</p>
+  </div>
+  <div>
+    <div class="ph">
+      <div class="top"><span>Котики</span><span>Вопрос 4</span></div>
+      <div class="mid">
+        <div class="muted" style="font-size:11px">Обсуждение · 0:27</div>
+        <div class="inp" style="height:60px">Грачи прилетели, Саврасов</div>
+        <div class="toggle"><span class="sw"></span>Ставка (×2 / −1)</div>
+        <div class="muted" style="font-size:10px">сохранено ✓ можно менять до конца</div>
+      </div>
+    </div>
+    <p class="cap">Свободный ввод (+ставка, если в туре включены)</p>
+  </div>
+  <div>
+    <div class="ph">
+      <div class="top"><span>Котики</span><span>Вопрос 5</span></div>
+      <div class="mid">
+        <div class="opt">A. Моне</div>
+        <div class="opt sel">B. Саврасов</div>
+        <div class="opt">C. Шишкин</div>
+        <div class="opt">D. Левитан</div>
+      </div>
+    </div>
+    <p class="cap">Вопрос с вариантами</p>
+  </div>
+</div>
