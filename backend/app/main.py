@@ -3,6 +3,8 @@ import contextlib
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import auth
 from app.api import game, media, quizzes
@@ -45,4 +47,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health() -> dict:
         return {"ok": True}
 
+    if settings.static_dir is not None:
+        _mount_spa(app, settings)
+
     return app
+
+
+def _mount_spa(app: FastAPI, settings: Settings) -> None:
+    static = settings.static_dir
+    index = static / "index.html"
+    if (static / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=static / "assets"), name="assets")
+
+    def spa() -> FileResponse:
+        return FileResponse(index)
+
+    for path in ("/", "/play", "/screen", "/admin", "/admin/{rest:path}"):
+        app.add_api_route(path, spa, methods=["GET"], include_in_schema=False)

@@ -35,3 +35,16 @@ ADMIN_PASSWORD=dev SECRET_KEY=dev uv run uvicorn --factory app.main:create_app -
 ```
 
 Приложение запускается только как фабрика (`--factory app.main:create_app`): модульного `app` нет.
+
+Фронтенд (каталог `frontend/`, React + Vite):
+
+```bash
+cd frontend
+npm install
+npm run dev      # http://localhost:5173, проксирует /api, /media, /ws на бэк
+npm run build    # проверка типов + сборка в frontend/dist
+```
+
+- Если порт 8000 занят: запусти бэк на другом порту и укажи его прокси: `TQUIZ_BACKEND=http://localhost:8010 npm run dev`.
+- Играть с телефонов в dev: бэк запускается с `PUBLIC_URL=http://<IP ноутбука>:5173`, и телефоны в той же Wi-Fi открывают QR из лобби.
+- Прод-сборку раздаёт сам бэк, если задан `STATIC_DIR=../frontend/dist`.

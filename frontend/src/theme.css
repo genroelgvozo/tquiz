@@ -1,0 +1,189 @@
+/* Tokens follow the approved mockups in docs/superpowers/specs/mockups/ */
+:root {
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --dark-bg: #121214;
+  --dark-surface: #1f1f24;
+  --dark-surface-2: #26262c;
+  --dark-border: #333338;
+  --dark-text: #f2f2f2;
+  --dark-muted: #8a8a90;
+  --accent: #f5c542;
+  --accent-dim: #3a3424;
+  --blue: #4da3ff;
+  --blue-dim: #1e3550;
+  --red: #e5484d;
+  --green: #34c759;
+
+  --light-bg: #f5f5f7;
+  --light-surface: #ffffff;
+  --light-surface-2: #f2f2f4;
+  --light-border: #d1d1d6;
+  --light-text: #1d1d1f;
+  --light-muted: #86868b;
+  --ok-bg: #e9f8ee;
+  --ok-fg: #1a7f37;
+  --no-bg: #fdecec;
+  --no-fg: #c62828;
+  --warn-bg: #fffbea;
+  --warn-border: #f5c542;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  background: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.dark {
+  background: var(--dark-bg);
+  color: var(--dark-text);
+  min-height: 100%;
+}
+
+.light {
+  background: var(--light-bg);
+  color: var(--light-text);
+  min-height: 100%;
+}
+
+.muted {
+  color: var(--dark-muted);
+}
+
+.light .muted {
+  color: var(--light-muted);
+}
+
+/* ---------- shared components ---------- */
+
+.logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: none;
+}
+
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qr {
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phase-timer {
+  width: 100%;
+}
+
+.phase-timer-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4em;
+  font-weight: 600;
+}
+
+.phase-timer.is-discuss .phase-timer-label {
+  color: var(--accent);
+}
+
+.phase-timer.is-input .phase-timer-label {
+  color: var(--blue);
+}
+
+.phase-timer.status-finished .phase-timer-label,
+.phase-timer.status-paused .phase-timer-label {
+  color: var(--dark-muted);
+}
+
+.phase-timer-hint {
+  color: var(--dark-muted);
+  font-weight: 400;
+}
+
+.phase-timer-track {
+  display: flex;
+  gap: 3px;
+  height: 0.5em;
+  min-height: 8px;
+}
+
+.phase-seg {
+  border-radius: 4px;
+  overflow: hidden;
+  flex-basis: 0;
+}
+
+.seg-discuss {
+  background: var(--accent-dim);
+}
+
+.seg-input {
+  background: var(--blue-dim);
+}
+
+.seg-discuss .phase-fill {
+  background: var(--accent);
+  height: 100%;
+}
+
+.seg-input .phase-fill {
+  background: var(--blue);
+  height: 100%;
+}
+
+.buzz-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--dark-surface-2);
+  overflow: hidden;
+}
+
+.buzz-bar-fill {
+  height: 100%;
+  background: #fff;
+}
+
+.center-message {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
