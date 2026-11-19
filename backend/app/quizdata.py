@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from app.models import Category, Question, Quiz, Round
+from app.models import DEFAULT_CELL_VALUES, Category, Question, Quiz, Round
 
 MediaKind = Literal["image", "audio"]
 
@@ -51,6 +51,7 @@ class RoundData(BaseModel):
     discuss_seconds: int = 60
     input_seconds: int = 15
     stakes: bool = False
+    cell_values: list[int] = [100, 200, 300, 400, 500]
     categories: list[CategoryData] = []
     questions: list[QuestionData] = []
 
@@ -111,6 +112,7 @@ def load_quiz_data(session: Session, quiz_id: int) -> QuizData:
             discuss_seconds=r.discuss_seconds,
             input_seconds=r.input_seconds,
             stakes=r.stakes,
+            cell_values=list(r.cell_values or DEFAULT_CELL_VALUES),
         )
         if r.kind == "jeopardy":
             cats = session.exec(
@@ -120,7 +122,13 @@ def load_quiz_data(session: Session, quiz_id: int) -> QuizData:
                 CategoryData(
                     id=c.id,
                     name=c.name,
-                    questions=[_question_data(q) for q in questions if q.category_id == c.id],
+                    questions=[
+                        _question_data(q)
+                        for q in sorted(
+                            (q for q in questions if q.category_id == c.id),
+                            key=lambda q: (q.value, q.position, q.id),
+                        )
+                    ],
                 )
                 for c in cats
             ]

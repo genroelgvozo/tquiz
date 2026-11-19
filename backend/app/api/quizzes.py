@@ -1,6 +1,6 @@
 """Quiz editor REST API. Every mutation inside a quiz returns the full EditorPayload."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -8,7 +8,7 @@ from sqlmodel import Session, SQLModel, func, select
 
 from app.auth import require_admin
 from app.db import get_session
-from app.models import Category, Question, Quiz, Round
+from app.models import DEFAULT_CELL_VALUES, Category, Question, Quiz, Round
 from app.quizdata import load_quiz_data
 
 router = APIRouter(dependencies=[Depends(require_admin)])
@@ -31,6 +31,8 @@ class QuizUpdate(BaseModel):
 class RoundCreate(BaseModel):
     title: str = Field(default="", max_length=200)
     kind: Literal["jeopardy", "free"]
+    cell_values: list[int] | None = None
+    categories: list[Annotated[str, Field(max_length=200)]] = []
 
 
 class RoundUpdate(BaseModel):
@@ -41,6 +43,7 @@ class RoundUpdate(BaseModel):
     discuss_seconds: int | None = Field(default=None, ge=0, le=3600)
     input_seconds: int | None = Field(default=None, ge=0, le=3600)
     stakes: bool | None = None
+    cell_values: list[int] | None = None
 
 
 class CategoryCreate(BaseModel):
@@ -124,6 +127,32 @@ def _delete_round_children(session: Session, round_id: int) -> None:
         session.delete(q)
     for c in session.exec(select(Category).where(Category.round_id == round_id)).all():
         session.delete(c)
+
+
+def _clean_cell_values(values: list[int]) -> list[int]:
+    cleaned = sorted(set(values))
+    if not cleaned:
+        raise HTTPException(422, "Укажите хотя бы одну стоимость")
+    if len(cleaned) > 20:
+        raise HTTPException(422, "Не больше 20 стоимостей")
+    return cleaned
+
+
+def next_cell_value(existing: list[int], cell_values: list[int]) -> int:
+    for v in cell_values:
+        if v not in existing:
+            return v
+    step = cell_values[-1] - cell_values[-2] if len(cell_values) >= 2 else cell_values[0]
+    return max(existing) + step
+
+
+def _add_category(session: Session, rnd: Round, name: str) -> None:
+    pos = _next_position(session, Category, Category.round_id == rnd.id)
+    cat = Category(round_id=rnd.id, name=name, position=pos)
+    session.add(cat)
+    session.flush()
+    for i, value in enumerate(rnd.cell_values, start=1):
+        session.add(Question(round_id=rnd.id, category_id=cat.id, position=i, value=value))
 
 
 def _validate_question(q: Question) -> None:
@@ -217,7 +246,15 @@ def create_round(quiz_id: int, body: RoundCreate, request: Request, session: Ses
     _get(session, Quiz, quiz_id)
     _ensure_unlocked(request, quiz_id)
     pos = _next_position(session, Round, Round.quiz_id == quiz_id)
-    session.add(Round(quiz_id=quiz_id, title=body.title, kind=body.kind, position=pos))
+    names = [n.strip() for n in body.categories if n.strip()]
+    if names and body.kind != "jeopardy":
+        raise HTTPException(422, "Темы есть только в своей игре")
+    values = _clean_cell_values(body.cell_values) if body.cell_values is not None else list(DEFAULT_CELL_VALUES)
+    rnd = Round(quiz_id=quiz_id, title=body.title, kind=body.kind, position=pos, cell_values=values)
+    session.add(rnd)
+    session.flush()
+    for name in names:
+        _add_category(session, rnd, name)
     session.commit()
     return _payload(session, request, quiz_id)
 
@@ -227,8 +264,11 @@ def update_round(round_id: int, body: RoundUpdate, request: Request, session: Se
     rnd = _get(session, Round, round_id)
     _ensure_unlocked(request, rnd.quiz_id)
     for key, value in body.model_dump(exclude_unset=True).items():
-        if value is not None:
-            setattr(rnd, key, value)
+        if value is None:
+            continue
+        if key == "cell_values":
+            value = _clean_cell_values(value)
+        setattr(rnd, key, value)
     session.add(rnd)
     session.commit()
     return _payload(session, request, rnd.quiz_id)
@@ -263,8 +303,7 @@ def create_category(round_id: int, body: CategoryCreate, request: Request, sessi
     _ensure_unlocked(request, rnd.quiz_id)
     if rnd.kind != "jeopardy":
         raise HTTPException(422, "Категории есть только в своей игре")
-    pos = _next_position(session, Category, Category.round_id == round_id)
-    session.add(Category(round_id=round_id, name=body.name, position=pos))
+    _add_category(session, rnd, body.name)
     session.commit()
     return _payload(session, request, rnd.quiz_id)
 
@@ -317,9 +356,9 @@ def create_question(round_id: int, body: QuestionCreate, request: Request, sessi
         cat = _get(session, Category, body.category_id)
         if cat.round_id != round_id:
             raise HTTPException(422, "Категория из другого тура")
-        count = session.exec(select(func.count()).select_from(Question).where(Question.category_id == cat.id)).one()
+        existing = list(session.exec(select(Question.value).where(Question.category_id == cat.id)).all())
         pos = _next_position(session, Question, Question.category_id == cat.id)
-        question = Question(round_id=round_id, category_id=cat.id, position=pos, value=(count + 1) * 100)
+        question = Question(round_id=round_id, category_id=cat.id, position=pos, value=next_cell_value(existing, rnd.cell_values))
     else:
         if body.category_id is not None:
             raise HTTPException(422, "В туре со свободным вводом нет категорий")

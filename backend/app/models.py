@@ -4,6 +4,9 @@ from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
 
+DEFAULT_CELL_VALUES = [100, 200, 300, 400, 500]
+
+
 class Quiz(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     title: str
@@ -20,6 +23,9 @@ class Round(SQLModel, table=True):
     minus_on_wrong: bool = False
     buzzer_mode: str = "bar"  # "instant" | "bar"
     bar_seconds: int = 5
+    cell_values: list[int] = Field(
+        default_factory=lambda: list(DEFAULT_CELL_VALUES), sa_column=Column(JSON, nullable=False)
+    )
     # free-input settings
     discuss_seconds: int = 60
     input_seconds: int = 15
