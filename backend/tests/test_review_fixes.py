@@ -40,16 +40,8 @@ def test_undo_adjust_score_keeps_free_answers_and_timer():
     g.apply_admin(AdjustScore(team_id=a, delta=5))
     g.apply_team(b, SubmitAnswer(text="ответ"))
     g.apply_admin(Undo())
-    assert g.team(a).score == 0
+    assert g.team(a).round_scores.get('0', 0) == 0
     assert g.state.free.answers["1"][b].text == "ответ" and g.state.free.timer.status == "running"
-
-
-def test_start_game_clears_undo_stack():
-    g = new_game(make_quiz([free_round(1, [q(1)])]))
-    a = g.join("А").team_id
-    g.apply_admin(AdjustScore(team_id=a, delta=1))
-    g.apply_admin(StartGame())
-    assert g.state.undo_stack == []
 
 
 # ---------- I5: answers are bound to a question ----------

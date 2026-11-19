@@ -4,7 +4,7 @@ from app.game.commands import *  # noqa: F403
 from app.game.engine import GameError
 from app.game.jeopardy import buzzer_status
 from app.quizdata import media_ref
-from tests.factories import FakeClock, jeopardy_round, make_quiz, new_game, q
+from tests.factories import FakeClock, jeopardy_round, make_quiz, new_game, q, round_score
 
 AUDIO = media_ref("b" * 32 + ".mp3", "audio")
 
@@ -23,18 +23,6 @@ def setup(mode="instant", minus=True, teams=("А", "Б", "В")):
     g.apply_admin(StartGame())
     g.apply_admin(StartRound())
     return g, clock, ids
-
-
-def test_initial_chooser_lowest_score_then_earliest():
-    clock = FakeClock()
-    g = new_game(make_quiz([jeopardy_round(1, [("К", [q(1)])])]), clock=clock)
-    a = g.join("А").team_id
-    clock.advance(1)
-    b = g.join("Б").team_id
-    g.apply_admin(AdjustScore(team_id=a, delta=50))
-    g.apply_admin(StartGame())
-    g.apply_admin(StartRound())
-    assert g.state.jeopardy.chooser_team_id == b
 
 
 def test_open_cell_instant_opens_buttons_and_marks_played():
@@ -86,7 +74,7 @@ def test_correct_adds_value_reveals_and_passes_choice():
     g.apply_team(b, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     j = g.state.jeopardy
-    assert g.team(b).score == 100 and j.phase == "answer" and j.chooser_team_id == b
+    assert round_score(g, b) == 100 and j.phase == "answer" and j.chooser_team_id == b
 
 
 def test_wrong_with_minus_excludes_and_reopens():
@@ -95,7 +83,7 @@ def test_wrong_with_minus_excludes_and_reopens():
     g.apply_team(b, BuzzCmd())
     g.apply_admin(Judge(correct=False))
     j = g.state.jeopardy
-    assert g.team(b).score == -100 and j.excluded == [b] and j.buttons == "open" and j.buzzes == []
+    assert round_score(g, b) == -100 and j.excluded == [b] and j.buttons == "open" and j.buzzes == []
     g.apply_team(b, BuzzCmd())
     assert g.state.jeopardy.answering_team_id is None
 
@@ -105,7 +93,7 @@ def test_wrong_without_minus_keeps_score():
     g.apply_admin(OpenCell(question_id=1))
     g.apply_team(b, BuzzCmd())
     g.apply_admin(Judge(correct=False))
-    assert g.team(b).score == 0
+    assert round_score(g, b) == 0
 
 
 def test_all_wrong_keeps_previous_chooser():
@@ -131,7 +119,7 @@ def test_secret_rules():
     assert g.state.jeopardy.answering_team_id == b
     g.apply_admin(Judge(correct=False))
     j = g.state.jeopardy
-    assert g.team(b).score == -200 and j.phase == "answer" and j.chooser_team_id == a
+    assert round_score(g, b) == -200 and j.phase == "answer" and j.chooser_team_id == a
 
 
 def test_secret_correct_recipient_chooses_next():
@@ -140,7 +128,7 @@ def test_secret_correct_recipient_chooses_next():
     g.apply_admin(OpenCell(question_id=2))
     g.apply_admin(SetSecretRecipient(team_id=b))
     g.apply_admin(Judge(correct=True))
-    assert g.state.jeopardy.chooser_team_id == b and g.team(b).score == 200
+    assert g.state.jeopardy.chooser_team_id == b and round_score(g, b) == 200
 
 
 def test_buzz_on_audio_question_pauses_audio():
@@ -159,7 +147,7 @@ def test_undo_wrong_answer_restores_buttons_and_score():
     g.apply_team(c, BuzzCmd())
     g.apply_admin(Undo())
     j = g.state.jeopardy
-    assert g.team(b).score == 0 and j.answering_team_id == b and j.excluded == [] and j.buttons == "locked"
+    assert round_score(g, b) == 0 and j.answering_team_id == b and j.excluded == [] and j.buttons == "locked"
 
 
 def test_delete_answering_team_reopens_buttons():

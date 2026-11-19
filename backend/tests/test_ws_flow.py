@@ -42,7 +42,7 @@ def test_full_free_round_flow(admin_client):
         wait_view(team, lambda v: v["free"]["answer"]["text"] == "париж")
         adm.send_json({"type": "start_review"})
         v = wait_view(adm, lambda v: v["state"]["free"] and v["state"]["free"]["phase"] == "review")
-        assert v["state"]["teams"][0]["score"] == 1
+        assert v["state"]["teams"][0]["round_score"] == 1
 
 
 def test_error_goes_only_to_sender(admin_client):

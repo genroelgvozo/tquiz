@@ -45,6 +45,25 @@ def points(nominal: int, stake: bool, mark: bool | None) -> int:
     return 0
 
 
+def round_points(game: "Game") -> dict[str, int]:
+    """Points of the current free round per team, computed from the marks."""
+    free = game.state.free
+    result: dict[str, int] = {}
+    if free is None:
+        return result
+    for question in game.current_round().questions:
+        key = str(question.id)
+        answers = free.answers.get(key, {})
+        marks = free.marks.get(key, {})
+        for team in game.state.teams:
+            answer = answers.get(team.id)
+            mark = marks.get(team.id) if answer else False
+            result[team.id] = result.get(team.id, 0) + points(
+                question.nominal, answer.stake if answer else False, mark
+            )
+    return result
+
+
 def _timer_for(rnd: RoundData, question: QuestionData) -> Timer:
     input_seconds = question.input_seconds if question.input_seconds is not None else rnd.input_seconds
     discuss = question.discuss_seconds if question.discuss_seconds is not None else rnd.discuss_seconds
@@ -187,7 +206,6 @@ def _enter_review(game: "Game", index: int) -> None:
         answer = answers.get(team.id)
         mark = premark(question, answer)
         marks[team.id] = mark
-        team.score += points(question.nominal, bool(answer and answer.stake), mark)
     free.reviewed.append(question.id)
 
 
@@ -210,15 +228,11 @@ def _mark(game: "Game", cmd: Mark) -> None:
     free = _free(game)
     if cmd.question_id not in free.reviewed:
         raise GameError("Сначала откройте вопрос в разборе")
-    question = game.current_round().find_question(cmd.question_id)
-    team = game.team(cmd.team_id)
+    game.current_round().find_question(cmd.question_id)
+    game.team(cmd.team_id)
     key = str(cmd.question_id)
     marks = free.marks.setdefault(key, {})
-    answer = free.answers.get(key, {}).get(team.id)
-    stake = bool(answer and answer.stake)
-    old = marks.get(team.id)
-    team.score += points(question.nominal, stake, cmd.correct) - points(question.nominal, stake, old)
-    marks[team.id] = cmd.correct
+    marks[cmd.team_id] = cmd.correct
 
 
 # ---------- team handlers ----------

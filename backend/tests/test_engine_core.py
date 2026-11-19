@@ -2,6 +2,7 @@ import pytest
 
 from app.game.commands import *  # noqa: F403
 from app.game.engine import GameError
+from app.game import scoring
 from tests.factories import FakeClock, free_round, make_quiz, new_game, q
 
 
@@ -26,10 +27,12 @@ def test_approve_rejoin_replaces_token_and_keeps_score():
     g = game2()
     first = g.join("Котики")
     tid = first.team_id
+    g.apply_admin(StartGame())
+    g.apply_admin(StartRound())
     g.apply_admin(AdjustScore(team_id=tid, delta=5))
     req = g.join("Котики")
     g.apply_admin(ApproveRejoin(request_id=req.request_id))
-    assert g.team_by_token(req.token).score == 5
+    assert scoring.stored_round_score(g.team_by_token(req.token), 0) == 5
     assert g.team_by_token(first.token) is None and g.state.rejoin_requests == []
 
 
@@ -77,10 +80,12 @@ def test_start_game_without_rounds_fails():
 def test_undo_restores_score_but_keeps_new_teams():
     g = game2()
     a = g.join("А")
+    g.apply_admin(StartGame())
+    g.apply_admin(StartRound())
     g.apply_admin(AdjustScore(team_id=a.team_id, delta=3))
     b = g.join("Б")
     g.apply_admin(Undo())
-    assert g.team(a.team_id).score == 0 and g.team(b.team_id).name == "Б"
+    assert scoring.stored_round_score(g.team(a.team_id), 0) == 0 and g.team(b.team_id).name == "Б"
 
 
 def test_undo_empty_raises_and_stack_cleared_on_next_round():
@@ -98,6 +103,8 @@ def test_undo_empty_raises_and_stack_cleared_on_next_round():
 def test_undo_limit():
     g = game2()
     a = g.join("А")
+    g.apply_admin(StartGame())
+    g.apply_admin(StartRound())
     for _ in range(25):
         g.apply_admin(AdjustScore(team_id=a.team_id, delta=1))
     assert len(g.state.undo_stack) == 20

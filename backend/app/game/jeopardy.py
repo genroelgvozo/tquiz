@@ -2,6 +2,7 @@
 
 from typing import TYPE_CHECKING, Literal
 
+from app.game import scoring
 from app.game.commands import BuzzCmd, Judge, OpenButtons, OpenCell, Reveal, SetChooser, SetSecretRecipient, ToBoard
 from app.game.constants import FALSE_START_LOCK
 from app.game.errors import GameError
@@ -49,7 +50,7 @@ def _after_wrong(game: "Game", j: JeopardyState) -> None:
 
 def start(game: "Game") -> None:
     teams = game.state.teams
-    chooser = min(teams, key=lambda t: (t.score, t.joined_at)).id if teams else None
+    chooser = min(teams, key=lambda t: (scoring.total(game, t), t.joined_at)).id if teams else None
     game.state.jeopardy = JeopardyState(chooser_team_id=chooser)
 
 
@@ -167,13 +168,13 @@ def _judge(game: "Game", cmd: Judge) -> None:
     question = current_question(game)
     team = game.team(j.answering_team_id)
     if cmd.correct:
-        team.score += question.value
+        scoring.add_points(team, game.state.round_index, question.value)
         j.chooser_team_id = team.id
         j.phase = "answer"
         j.buttons = "closed"
     else:
         if game.current_round().minus_on_wrong:
-            team.score -= question.value
+            scoring.add_points(team, game.state.round_index, -question.value)
         j.excluded.append(team.id)
         j.answering_team_id = None
         _after_wrong(game, j)

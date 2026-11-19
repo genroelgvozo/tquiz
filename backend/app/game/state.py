@@ -15,7 +15,7 @@ class Team(BaseModel):
     id: str
     name: str
     token: str
-    score: int = 0
+    round_scores: dict[str, int] = Field(default_factory=dict)
     joined_at: float
 
 
@@ -81,6 +81,7 @@ class GameState(BaseModel):
     teams: list[Team] = Field(default_factory=list)
     rejoin_requests: list[RejoinRequest] = Field(default_factory=list)
     round_index: int = -1
+    closed_rounds: list[int] = Field(default_factory=list)
     jeopardy: JeopardyState | None = None
     free: FreeState | None = None
     overlay: Literal["leaderboard"] | None = None

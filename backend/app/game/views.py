@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.game import freeinput, jeopardy
+from app.game import freeinput, jeopardy, scoring
 from app.game.engine import Game
 from app.game.jeopardy import BuzzerStatus
 from app.game.state import (
@@ -24,7 +24,36 @@ from app.quizdata import MediaRef, QuestionData, QuizData, RoundData
 class TeamPublic(BaseModel):
     id: str
     name: str
-    score: int
+
+
+class StandingsColumn(BaseModel):
+    index: int
+    title: str
+    closed: bool
+
+
+class StandingsRow(BaseModel):
+    team_id: str
+    name: str
+    rounds: list[int | None]
+    total: int
+
+
+class Standings(BaseModel):
+    columns: list[StandingsColumn]
+    rows: list[StandingsRow]
+
+
+class TeamScore(BaseModel):
+    kind: Literal["round", "total"]
+    value: int
+
+
+class AdminTeam(BaseModel):
+    id: str
+    name: str
+    round_score: int | None
+    total: int
 
 
 class RejoinPublic(BaseModel):
@@ -68,6 +97,7 @@ class ScreenJeopardy(BaseModel):
     bar_ends_at: float | None
     bar_seconds: int
     question: ScreenQuestion | None
+    scores: dict[str, int]
 
 
 class ScreenFree(BaseModel):
@@ -91,6 +121,7 @@ class ScreenView(BaseModel):
     overlay: Literal["leaderboard"] | None
     audio: AudioCmd
     preload: list[str]
+    standings: Standings
     jeopardy: ScreenJeopardy | None
     free: ScreenFree | None
 
@@ -119,6 +150,7 @@ class TeamView(BaseModel):
     kind: Literal["team"] = "team"
     now: float
     team: TeamPublic
+    score: TeamScore | None
     stage: Stage
     round: RoundPublic | None
     jeopardy: TeamJeopardy | None
@@ -129,7 +161,9 @@ class AdminState(BaseModel):
     quiz_id: int
     stage: Stage
     qr_visible: bool
-    teams: list[TeamPublic]
+    teams: list[AdminTeam]
+    standings: Standings
+    score_adjust_round: int | None
     rejoin_requests: list[RejoinPublic]
     round_index: int
     jeopardy: JeopardyState | None
@@ -154,7 +188,52 @@ _IN_ROUND: set[str] = {"intro", "jeopardy", "free"}
 
 
 def _teams(game: Game) -> list[TeamPublic]:
-    return [TeamPublic(id=t.id, name=t.name, score=t.score) for t in game.state.teams]
+    return [TeamPublic(id=t.id, name=t.name) for t in game.state.teams]
+
+
+def _standings(game: Game) -> Standings:
+    closed = set(game.state.closed_rounds)
+    columns = [
+        StandingsColumn(index=i, title=r.title, closed=i in closed) for i, r in enumerate(game.quiz.rounds)
+    ]
+    rows = sorted(
+        (
+            (
+                scoring.total(game, t),
+                t.joined_at,
+                StandingsRow(
+                    team_id=t.id,
+                    name=t.name,
+                    rounds=[scoring.stored_round_score(t, c.index) if c.closed else None for c in columns],
+                    total=scoring.total(game, t),
+                ),
+            )
+            for t in game.state.teams
+        ),
+        key=lambda x: (-x[0], x[1]),
+    )
+    return Standings(columns=columns, rows=[row for _, _, row in rows])
+
+
+def _admin_teams(game: Game) -> list[AdminTeam]:
+    return [
+        AdminTeam(
+            id=t.id,
+            name=t.name,
+            round_score=scoring.current_round_score(game, t),
+            total=scoring.total(game, t),
+        )
+        for t in game.state.teams
+    ]
+
+
+def _team_score(game: Game, team) -> TeamScore | None:
+    stage = game.state.stage
+    if stage in ("intro", "finished"):
+        return TeamScore(kind="total", value=scoring.total(game, team))
+    if stage == "jeopardy":
+        return TeamScore(kind="round", value=scoring.current_round_score(game, team) or 0)
+    return None
 
 
 def _round(game: Game) -> RoundData | None:
@@ -213,6 +292,7 @@ def _screen_jeopardy(game: Game, rnd: RoundData) -> ScreenJeopardy:
         bar_ends_at=j.bar_ends_at,
         bar_seconds=rnd.bar_seconds,
         question=question,
+        scores={t.id: scoring.current_round_score(game, t) or 0 for t in game.state.teams},
     )
 
 
@@ -263,6 +343,7 @@ def screen_view(game: Game, join_url: str) -> ScreenView:
         overlay=st.overlay,
         audio=st.audio,
         preload=_preload(rnd),
+        standings=_standings(game),
         jeopardy=_screen_jeopardy(game, rnd) if st.stage == "jeopardy" and st.jeopardy else None,
         free=_screen_free(game, rnd) if st.stage == "free" and st.free else None,
     )
@@ -303,7 +384,8 @@ def team_view(game: Game, team_id: str) -> TeamView:
         )
     return TeamView(
         now=game.now(),
-        team=TeamPublic(id=team.id, name=team.name, score=team.score),
+        team=TeamPublic(id=team.id, name=team.name),
+        score=_team_score(game, team),
         stage=st.stage,
         round=_round_public(game),
         jeopardy=jv,
@@ -318,7 +400,9 @@ def admin_view(game: Game, join_url: str, online: set[str]) -> AdminView:
         quiz_id=st.quiz_id,
         stage=st.stage,
         qr_visible=st.qr_visible,
-        teams=_teams(game),
+        teams=_admin_teams(game),
+        standings=_standings(game),
+        score_adjust_round=scoring.adjust_round(game),
         rejoin_requests=[
             RejoinPublic(id=r.id, team_id=r.team_id, team_name=names.get(r.team_id, "")) for r in st.rejoin_requests
         ],

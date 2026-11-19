@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.game import freeinput, jeopardy
+from app.game import freeinput, jeopardy, scoring
 from app.game.commands import (
     AdjustScore,
     ApproveRejoin,
@@ -145,7 +145,12 @@ class Game:
         entry = None
         if isinstance(cmd, AdjustScore):
             # a manual score fix is undone by reverting just that score, never the whole game
-            entry = {"kind": "score", "team_id": cmd.team_id, "delta": cmd.delta}
+            entry = {
+                "kind": "score",
+                "team_id": cmd.team_id,
+                "delta": cmd.delta,
+                "round": scoring.adjust_round(self),
+            }
         elif type(cmd) in UNDOABLE:
             entry = {"kind": "state", "state": self.state.model_dump(exclude={"undo_stack"})}
         handler(self, cmd)
@@ -187,6 +192,7 @@ def _start_round(game: Game, cmd: StartRound) -> None:
         raise GameError("Тур уже идёт")
     rnd = game.current_round()
     game.state.stage = rnd.kind
+    game.state.overlay = None
     game.state.undo_stack = []
     if rnd.kind == "jeopardy":
         jeopardy.start(game)
@@ -201,16 +207,18 @@ def _next_round(game: Game, cmd: NextRound) -> None:
         raise GameError("Игра окончена")
     if game.state.round_index + 1 >= len(game.quiz.rounds):
         raise GameError("Это был последний тур")
+    scoring.close_current_round(game)
     game.state.round_index += 1
     game.state.stage = "intro"
     game.state.jeopardy = None
     game.state.free = None
-    game.state.overlay = None
+    game.state.overlay = "leaderboard" if game.state.closed_rounds else None
     game.state.undo_stack = []
     game.set_audio("stop")
 
 
 def _finish_game(game: Game, cmd: FinishGame) -> None:
+    scoring.close_current_round(game)
     game.state.stage = "finished"
     game.state.overlay = None
     game.state.undo_stack = []
@@ -255,7 +263,11 @@ def _reject_rejoin(game: Game, cmd: RejectRejoin) -> None:
 def _adjust_score(game: Game, cmd: AdjustScore) -> None:
     if cmd.delta == 0:
         raise GameError("Укажите изменение счёта")
-    game.team(cmd.team_id).score += cmd.delta
+    team = game.team(cmd.team_id)
+    round_index = scoring.adjust_round(game)
+    if round_index is None:
+        raise GameError("Счёт пока нечего править")
+    scoring.add_points(team, round_index, cmd.delta)
 
 
 def _undo(game: Game, cmd: Undo) -> None:
@@ -265,14 +277,14 @@ def _undo(game: Game, cmd: Undo) -> None:
     entry = current.undo_stack.pop()
     if entry.get("kind") == "score":
         team = game.find_team(entry["team_id"])
-        if team is not None:
-            team.score -= entry["delta"]
+        if team is not None and entry.get("round") is not None:
+            scoring.add_points(team, entry["round"], -entry["delta"])
         return
     restored = GameState.model_validate(entry["state"])
-    old_scores = {t.id: t.score for t in restored.teams}
+    old_scores = {t.id: t.round_scores for t in restored.teams}
     current_ids = {t.id for t in current.teams}
     vanished = [tid for tid in old_scores if tid not in current_ids]
-    restored.teams = [t.model_copy(update={"score": old_scores.get(t.id, t.score)}) for t in current.teams]
+    restored.teams = [t.model_copy(update={"round_scores": old_scores.get(t.id, t.round_scores)}) for t in current.teams]
     restored.rejoin_requests = current.rejoin_requests
     restored.undo_stack = current.undo_stack
     game.state = restored

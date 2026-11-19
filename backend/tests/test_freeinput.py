@@ -1,10 +1,11 @@
 import pytest
 
+from app.game import freeinput
 from app.game.commands import *  # noqa: F403
 from app.game.engine import GameError
 from app.game.text import normalize_answer
 from app.quizdata import media_ref
-from tests.factories import FakeClock, free_round, make_quiz, new_game, q
+from tests.factories import FakeClock, free_round, make_quiz, new_game, q, round_score
 
 
 def setup(stakes=False, questions=None):
@@ -92,7 +93,7 @@ def test_stake_ignored_when_round_has_no_stakes():
     assert g.state.free.answers["1"][a].stake is False
 
 
-def test_review_premarks_and_points():
+def test_review_premarks_without_points():
     g, clock, a, b, c = setup(stakes=True)
     g.apply_team(a, SubmitAnswer(text="грачи прилетели!"))
     g.apply_team(b, SubmitAnswer(text="Саврасов", stake=True))
@@ -101,30 +102,43 @@ def test_review_premarks_and_points():
     g.apply_team(b, SubmitAnswer(option=0))
     g.apply_admin(StartReview())
     assert g.state.free.marks["1"] == {a: True, b: None, c: False}
-    assert [g.team(t).score for t in (a, b, c)] == [1, 0, 0]
+    assert g.team(a).round_scores == {}
     g.apply_admin(Mark(question_id=1, team_id=b, correct=False))
-    assert g.team(b).score == -1
+    assert g.state.free.marks["1"][b] is False
     g.apply_admin(ReviewGoto(index=1))
     assert g.state.free.marks["2"] == {a: True, b: False, c: False}
-    assert [g.team(t).score for t in (a, b, c)] == [3, -1, 0]
+    assert all(g.team(t).round_scores == {} for t in (a, b, c))
+
+
+def test_round_points_count_stakes_and_marks():
+    g, clock, a, b, c = setup(stakes=True)
+    g.apply_team(a, SubmitAnswer(text="грачи прилетели!"))
+    g.apply_team(b, SubmitAnswer(text="Саврасов", stake=True))
+    g.apply_admin(OpenQuestion(index=1))
+    g.apply_team(a, SubmitAnswer(option=1, stake=True))
+    g.apply_admin(StartReview())
+    g.apply_admin(ReviewGoto(index=1))
+    g.apply_admin(Mark(question_id=1, team_id=b, correct=False))
+    assert freeinput.round_points(g) == {a: 3, b: -1, c: 0}
+    assert round_score(g, a) == 3
 
 
 def test_stake_without_answer_is_wrong():
     g, clock, a, *_ = setup(stakes=True)
     g.apply_team(a, SubmitAnswer(text="", stake=True))
     g.apply_admin(StartReview())
-    assert g.state.free.marks["1"][a] is False and g.team(a).score == -1
+    assert g.state.free.marks["1"][a] is False and freeinput.round_points(g)[a] == -1
 
 
-def test_changing_mark_recomputes_and_revisit_does_not_double():
+def test_changing_mark_changes_round_points_and_revisit_does_not_double():
     g, clock, a, *_ = setup()
     g.apply_team(a, SubmitAnswer(text="Грачи прилетели"))
     g.apply_admin(StartReview())
     g.apply_admin(ReviewGoto(index=1))
     g.apply_admin(ReviewGoto(index=0))
-    assert g.team(a).score == 1
+    assert freeinput.round_points(g)[a] == 1
     g.apply_admin(Mark(question_id=1, team_id=a, correct=False))
-    assert g.team(a).score == 0
+    assert freeinput.round_points(g)[a] == 0
 
 
 def test_mark_requires_reviewed_question():
