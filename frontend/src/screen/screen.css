@@ -315,22 +315,30 @@
 
 .scr-standings {
   border-collapse: collapse;
-  width: min(86vw, 1400px);
+  /* cap in em, not px: the font grows with the screen, so the columns must grow with it */
+  width: min(86vw, 30.5em);
   table-layout: fixed;
   font-size: 1.5em;
 }
 
 .scr-standings th,
 .scr-standings td {
-  padding: 1.2vh 0.6em;
+  /* narrow side padding: with 6 rounds a 4-digit score must still fit its column at 1920px,
+     otherwise the overflowing number loses its right alignment */
+  padding: 1.2vh 0.35em;
   border-bottom: 1px solid var(--dark-surface-2);
   text-align: right;
   white-space: nowrap;
 }
 
+/* th keeps the table's font size so em-based padding and column widths match the body cells;
+   only the label inside is smaller */
 .scr-standings th {
   color: var(--dark-muted);
   font-weight: 400;
+}
+
+.scr-standings th .label {
   font-size: 0.7em;
 }
 
@@ -345,7 +353,6 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
   overflow-wrap: anywhere;
-  text-align: left;
 }
 
 .scr-standings th.round,

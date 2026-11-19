@@ -21,12 +21,14 @@ export default function StandingsTable({
             <th className="name" />
             {standings.columns.map((c) => (
               <th key={c.index} className="round" title={c.title}>
-                <span className="clamp">
+                <span className="label clamp">
                   {c.index + 1}. {c.title}
                 </span>
               </th>
             ))}
-            <th className="total">Итого</th>
+            <th className="total">
+              <span className="label">Итого</span>
+            </th>
           </tr>
         </thead>
         <tbody>
