@@ -260,7 +260,7 @@
 .scr-overlay {
   position: absolute;
   inset: 0;
-  background: rgb(18 18 20 / 0.97);
+  background: rgb(18 18 20);
   display: flex;
   padding: 4vh 4vw;
 }
@@ -311,4 +311,52 @@
   padding: 1em 2em;
   font-size: 1.4em;
   font-weight: 700;
+}
+
+.scr-standings {
+  border-collapse: collapse;
+  width: min(86vw, 1400px);
+  font-size: 1.5em;
+}
+
+.scr-standings th,
+.scr-standings td {
+  padding: 1.2vh 0.6em;
+  border-bottom: 1px solid var(--dark-surface-2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.scr-standings th {
+  color: var(--dark-muted);
+  font-weight: 400;
+  font-size: 0.7em;
+}
+
+.scr-standings th.round {
+  max-width: 11em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scr-standings .n {
+  color: var(--dark-muted);
+  width: 1.5em;
+  text-align: left;
+}
+
+.scr-standings .name {
+  width: 100%;
+  text-align: left;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scr-standings .round {
+  color: var(--dark-muted);
+}
+
+.scr-standings tr.first b {
+  color: var(--accent);
 }

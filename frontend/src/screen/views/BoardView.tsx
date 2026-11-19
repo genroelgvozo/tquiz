@@ -21,7 +21,7 @@ export default function BoardView({ j, teams }: { j: ScreenJeopardy; teams: Team
           </div>
         ))}
       </div>
-      <ScoreStrip teams={teams} chooserId={j.chooser_team_id} />
+      <ScoreStrip teams={teams} scores={j.scores} chooserId={j.chooser_team_id} />
     </div>
   );
 }

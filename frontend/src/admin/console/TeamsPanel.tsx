@@ -57,19 +57,23 @@ export default function TeamsPanel({ view, send }: PanelProps) {
                 <Text flex={1} truncate title={t.name}>
                   {t.name}
                 </Text>
-                <Text fw={700}>{t.score}</Text>
+                <Text size="sm" c="dimmed">
+                  {t.round_score !== null && <>в туре {state.round_index + 1}: {t.round_score} · </>}
+                  итог <Text span fw={700} c="dark">{t.total}</Text>
+                </Text>
               </Group>
               <Group gap={6} wrap="nowrap" mt={6} pl="md">
                 <NumberInput
                   size="xs"
                   w={64}
                   hideControls
+                  disabled={state.score_adjust_round === null}
                   placeholder="±"
                   value={deltas[t.id] ?? ""}
                   onChange={(v) => setDeltas({ ...deltas, [t.id]: v })}
                   onKeyDown={(e) => e.key === "Enter" && apply(t.id)}
                 />
-                <Button size="xs" variant="default" onClick={() => apply(t.id)}>
+                <Button size="xs" variant="default" disabled={state.score_adjust_round === null} onClick={() => apply(t.id)}>
                   Применить
                 </Button>
                 <ActionIcon

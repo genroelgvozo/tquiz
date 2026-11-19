@@ -13,7 +13,8 @@ export default function ReviewPanel({ view, send }: PanelProps) {
 
   const mark = (teamId: string, value: boolean) => {
     const next = marks[teamId] === value ? null : value; // clicking the active mark clears it
-    send({ type: "mark", question_id: q.id, team_id: teamId, correct: next });
+    const a = answers[teamId];
+    send({ type: "mark", question_id: q.id, team_id: teamId, correct: next, text: a?.text ?? "", option: a?.option ?? null });
   };
 
   const reference =

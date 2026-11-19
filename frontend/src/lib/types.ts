@@ -44,6 +44,7 @@ export interface RoundData {
   discuss_seconds: number;
   input_seconds: number;
   stakes: boolean;
+  cell_values: number[];
   categories: CategoryData[];
   questions: QuestionData[];
 }
@@ -114,7 +115,8 @@ export interface FreeState {
   answers: Record<string, Record<string, Answer>>;
   review_index: number;
   marks: Record<string, Record<string, boolean | null>>;
-  reviewed: number[];
+  opened: number[];
+  revealed: number[];
 }
 
 export interface AudioCmd {
@@ -127,7 +129,36 @@ export interface AudioCmd {
 export interface TeamPublic {
   id: string;
   name: string;
-  score: number;
+}
+
+export interface StandingsColumn {
+  index: number;
+  title: string;
+  closed: boolean;
+}
+
+export interface StandingsRow {
+  team_id: string;
+  name: string;
+  rounds: (number | null)[];
+  total: number;
+}
+
+export interface Standings {
+  columns: StandingsColumn[];
+  rows: StandingsRow[];
+}
+
+export interface TeamScore {
+  kind: "round" | "total";
+  value: number;
+}
+
+export interface AdminTeam {
+  id: string;
+  name: string;
+  round_score: number | null;
+  total: number;
 }
 
 export interface RejoinPublic {
@@ -171,6 +202,7 @@ export interface ScreenJeopardy {
   bar_ends_at: number | null;
   bar_seconds: number;
   question: ScreenQuestion | null;
+  scores: Record<string, number>;
 }
 
 export interface ScreenFree {
@@ -194,6 +226,7 @@ export interface ScreenView {
   overlay: "leaderboard" | null;
   audio: AudioCmd;
   preload: string[];
+  standings: Standings;
   jeopardy: ScreenJeopardy | null;
   free: ScreenFree | null;
 }
@@ -231,6 +264,7 @@ export interface TeamView {
   kind: "team";
   now: number;
   team: TeamPublic;
+  score: TeamScore | null;
   stage: Stage;
   round: RoundPublic | null;
   jeopardy: TeamJeopardy | null;
@@ -241,7 +275,9 @@ export interface AdminState {
   quiz_id: number;
   stage: Stage;
   qr_visible: boolean;
-  teams: TeamPublic[];
+  teams: AdminTeam[];
+  standings: Standings;
+  score_adjust_round: number | null;
   rejoin_requests: RejoinPublic[];
   round_index: number;
   jeopardy: JeopardyState | null;
@@ -304,7 +340,7 @@ export type AdminCommand =
   | { type: "timer_finish" }
   | { type: "start_review" }
   | { type: "review_goto"; index: number }
-  | { type: "mark"; question_id: number; team_id: string; correct: boolean | null };
+  | { type: "mark"; question_id: number; team_id: string; correct: boolean | null; text: string; option: number | null };
 
 export type TeamCommand =
   | { type: "join"; name: string }

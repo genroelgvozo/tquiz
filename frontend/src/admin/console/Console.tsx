@@ -85,8 +85,15 @@ export default function Console() {
         </SectionLabel>
         <Stack align="flex-start">
           <Title order={3}>{round.title}</Title>
-          <Text c="dimmed">На экране заставка тура.</Text>
-          <Button onClick={() => send({ type: "start_round" })}>Начать тур</Button>
+          <Text c="dimmed">{st.overlay === "leaderboard" ? "На экране сводная таблица." : "На экране заставка тура."}</Text>
+          <Group>
+            <Button onClick={() => send({ type: "start_round" })}>Начать тур</Button>
+            {st.overlay === "leaderboard" && (
+              <Button variant="default" onClick={() => send({ type: "set_overlay", overlay: null })}>
+                Показать заставку тура
+              </Button>
+            )}
+          </Group>
         </Stack>
       </Paper>
     );
@@ -94,14 +101,14 @@ export default function Console() {
   else if (st.stage === "free" && st.free?.phase === "review") panel = <ReviewPanel view={view} send={send} />;
   else if (st.stage === "free") panel = <FreePanel view={view} send={send} />;
   else if (st.stage === "finished") {
-    const winner = [...st.teams].sort((a, b) => b.score - a.score)[0];
+    const winner = st.standings.rows[0];
     panel = (
       <Paper withBorder p="md">
         <SectionLabel>Игра окончена</SectionLabel>
         <Stack align="flex-start">
           {winner && (
             <Title order={3}>
-              Победитель: {winner.name} ({winner.score})
+              Победитель: {winner.name} ({winner.total})
             </Title>
           )}
           <Button onClick={closeGame}>Закрыть игру</Button>

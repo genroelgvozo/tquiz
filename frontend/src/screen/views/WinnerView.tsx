@@ -1,8 +1,9 @@
-import type { TeamPublic } from "../../lib/types";
-import LeaderboardView, { sortTeams } from "./LeaderboardView";
+import type { Standings } from "../../lib/types";
+import StandingsTable from "./StandingsTable";
 
-export default function WinnerView({ teams }: { teams: TeamPublic[] }) {
-  const winner = sortTeams(teams)[0];
+export default function WinnerView({ standings }: { standings: Standings }) {
+  const first = standings.rows[0];
+  const winner = first && (first.total !== 0 || standings.columns.some((c) => c.closed)) ? first : undefined;
   return (
     <div className="scr-winner">
       {winner && (
@@ -11,7 +12,7 @@ export default function WinnerView({ teams }: { teams: TeamPublic[] }) {
           <div className="scr-h1 scr-accent">{winner.name}</div>
         </div>
       )}
-      <LeaderboardView teams={teams} title="Итоговый рейтинг" />
+      <StandingsTable standings={standings} title="Итоговый рейтинг" highlightFirst={winner !== undefined} />
     </div>
   );
 }

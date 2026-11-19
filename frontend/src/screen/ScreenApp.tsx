@@ -72,7 +72,7 @@ export default function ScreenApp() {
   if (view) {
     if (view.stage === "lobby") content = <LobbyView view={view} />;
     else if (view.stage === "intro" && view.round) content = <IntroView round={view.round} />;
-    else if (view.stage === "finished") content = <WinnerView teams={view.teams} />;
+    else if (view.stage === "finished") content = <WinnerView standings={view.standings} />;
     else if (view.stage === "jeopardy" && view.jeopardy) {
       const j = view.jeopardy;
       const answering = view.teams.find((t) => t.id === j.answering_team_id);
@@ -118,7 +118,7 @@ export default function ScreenApp() {
       {content}
       {view?.overlay === "leaderboard" && (
         <div className="scr-overlay">
-          <LeaderboardView teams={view.teams} />
+          <LeaderboardView standings={view.standings} />
         </div>
       )}
       {view && view.qr_visible && view.stage !== "lobby" && (

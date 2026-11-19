@@ -62,7 +62,12 @@ export default function PlayApp() {
   const header = view && mode === "playing" && (
     <header className="play-header">
       <span className="play-team">{view.team.name}</span>
-      <span className="play-score">{view.team.score}</span>
+      {view.score && (
+        <span className="play-score">
+          {view.score.value}
+          {view.score.kind === "round" && <small className="play-score-sub">в туре</small>}
+        </span>
+      )}
     </header>
   );
 
@@ -116,7 +121,7 @@ export default function PlayApp() {
       <Center>
         <div className="play-stack">
           <div className="play-title">Игра окончена</div>
-          <div className="play-muted">Ваш счёт: {view.team.score}</div>
+          <div className="play-muted">Ваш счёт: {view.score?.value ?? 0}</div>
         </div>
       </Center>
     );
