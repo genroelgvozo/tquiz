@@ -1,17 +1,53 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  ActionIcon,
+  Alert,
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Fieldset,
+  FileButton,
+  Grid,
+  Group,
+  NavLink,
+  Paper,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
+import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, uploadMedia } from "../lib/api";
+import { api, uploadMedia } from "../lib/api";
 import type { EditorPayload, QuestionData, RoundData } from "../lib/types";
 import { confirmDialog, newRoundDialog, promptDialog } from "./dialogs";
+import { notifyApiError, notifyError } from "./notify";
 import QuestionForm from "./QuestionForm";
 import RoundSettings from "./RoundSettings";
 import { ROUND_KINDS } from "./roundKinds";
 import { startGame } from "./startGame";
-import { useToast } from "./useToast";
+import { SectionLabel } from "./ui";
 
 type Selection = { kind: "round"; id: number } | { kind: "question"; id: number } | null;
 
 export type Mutate = (method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown) => Promise<boolean>;
+
+/** Small icon button for tree rows; stops the click from selecting the row underneath. */
+function RowAction(props: { title?: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <ActionIcon
+      variant="subtle"
+      color="gray"
+      size="sm"
+      title={props.title}
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+        props.onClick();
+      }}
+    >
+      {props.children}
+    </ActionIcon>
+  );
+}
 
 export default function QuizEditor() {
   const { id } = useParams();
@@ -19,30 +55,27 @@ export default function QuizEditor() {
   const navigate = useNavigate();
   const [payload, setPayload] = useState<EditorPayload | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
-  const { toast, show } = useToast();
 
   useEffect(() => {
     api<EditorPayload>("GET", `/api/quizzes/${quizId}`)
       .then(setPayload)
-      .catch((e) => show(e instanceof ApiError ? e.detail : "Не удалось загрузить квиз"));
-  }, [quizId, show]);
+      .catch((e) => notifyApiError(e, "Не удалось загрузить квиз"));
+  }, [quizId]);
 
-  const mutate: Mutate = useCallback(
-    async (method, path, body) => {
-      try {
-        const p = await api<EditorPayload>(method, path, body);
-        setPayload(p);
-        return true;
-      } catch (e) {
-        show(e instanceof ApiError ? e.detail : "Ошибка сохранения");
-        return false;
-      }
-    },
-    [show],
-  );
+  const mutate: Mutate = useCallback(async (method, path, body) => {
+    try {
+      const p = await api<EditorPayload>(method, path, body);
+      setPayload(p);
+      return true;
+    } catch (e) {
+      notifyApiError(e, "Ошибка сохранения");
+      return false;
+    }
+  }, []);
 
-  if (!payload) return <main className="admin-main">{toast}</main>;
+  if (!payload) return null;
   const { quiz, locked } = payload;
+  const isSelected = (kind: "round" | "question", itemId: number) => selection?.kind === kind && selection.id === itemId;
 
   const selectedRound: RoundData | undefined =
     selection?.kind === "round" ? quiz.rounds.find((r) => r.id === selection.id) : undefined;
@@ -98,21 +131,21 @@ export default function QuizEditor() {
       const created = all.find((q) => !before.has(q.id));
       if (created) setSelection({ kind: "question", id: created.id });
     } catch (e) {
-      show(e instanceof ApiError ? e.detail : "Ошибка");
+      notifyApiError(e, "Ошибка");
     }
   };
 
-  const uploadLogo = async (file: File | undefined) => {
+  const uploadLogo = async (file: File | null) => {
     if (!file) return;
     try {
       const media = await uploadMedia(file);
       if (media.kind !== "image") {
-        show("Эмблема должна быть картинкой");
+        notifyError("Эмблема должна быть картинкой");
         return;
       }
       await mutate("PATCH", `/api/quizzes/${quizId}`, { logo_filename: media.filename });
     } catch (e) {
-      show(e instanceof ApiError ? e.detail : "Не удалось загрузить файл");
+      notifyApiError(e, "Не удалось загрузить файл");
     }
   };
 
@@ -120,168 +153,210 @@ export default function QuizEditor() {
     try {
       if (await startGame(quizId)) navigate("/admin/game");
     } catch (e) {
-      show(e instanceof ApiError ? e.detail : "Не удалось начать игру");
+      notifyApiError(e, "Не удалось начать игру");
     }
   };
 
   return (
-    <main className="admin-main">
-      {locked && <div className="banner">Идёт игра — редактирование недоступно</div>}
-      <div className="editor-head">
-        <fieldset className="plain" disabled={locked} style={{ display: "contents" }}>
-          <div className="logo-preview">{quiz.logo && <img src={quiz.logo.url} alt="" />}</div>
-          <input
-            key={quiz.title}
-            className="title-input"
-            defaultValue={quiz.title}
-            onBlur={(e) => {
-              const title = e.target.value.trim();
-              if (title && title !== quiz.title) mutate("PATCH", `/api/quizzes/${quizId}`, { title });
-            }}
-          />
-          <label className="btn">
-            Загрузить эмблему
-            <input type="file" accept="image/*" hidden onChange={(e) => uploadLogo(e.target.files?.[0])} />
-          </label>
-          {quiz.logo && (
-            <button className="btn" onClick={() => mutate("PATCH", `/api/quizzes/${quizId}`, { logo_filename: null })}>
-              Убрать эмблему
-            </button>
-          )}
-        </fieldset>
-        <button className="btn primary" onClick={start}>
-          Начать игру
-        </button>
-      </div>
+    <Stack>
+      {locked && (
+        <Alert color="yellow" variant="light">
+          Идёт игра — редактирование недоступно
+        </Alert>
+      )}
 
-      <div className="editor-body">
-        <fieldset className="plain card tree" disabled={locked}>
-          <p className="label">Туры</p>
-          {quiz.rounds.map((r, i) => (
-            <div className="tree-round" key={r.id}>
-              <div
-                className={`tree-item ${selection?.kind === "round" && selection.id === r.id ? "selected" : ""}`}
-                onClick={() => setSelection({ kind: "round", id: r.id })}
-              >
-                <span className="grow tree-round-title">
-                  {i + 1}. {r.title || "Без названия"}
-                </span>
-                <span className="chip">{ROUND_KINDS[r.kind].short}</span>
-                {r.kind === "free" && r.stakes && <span className="chip yellow">ставки</span>}
-                <button className="btn ghost small" title="Выше" onClick={(e) => (e.stopPropagation(), mutate("POST", `/api/rounds/${r.id}/move`, { delta: -1 }))}>
-                  ↑
-                </button>
-                <button className="btn ghost small" title="Ниже" onClick={(e) => (e.stopPropagation(), mutate("POST", `/api/rounds/${r.id}/move`, { delta: 1 }))}>
-                  ↓
-                </button>
-              </div>
-              <div className="tree-children">
-                {r.kind === "jeopardy" ? (
-                  <>
-                    {r.categories.map((c) => (
-                      <div key={c.id}>
-                        <div className="tree-item">
-                          <span className="grow tree-cat-name">{c.name || "Без названия"}</span>
-                          <button
-                            className="btn ghost small"
-                            title="Переименовать"
-                            onClick={() => renameCategory(c.id, c.name)}
-                          >
-                            ✎
-                          </button>
-                          <button className="btn ghost small" onClick={() => mutate("POST", `/api/categories/${c.id}/move`, { delta: -1 })}>
+      <Group wrap="nowrap">
+        <Avatar src={quiz.logo?.url} size={40} />
+        <TextInput
+          key={quiz.title}
+          flex={1}
+          miw={120}
+          size="md"
+          disabled={locked}
+          defaultValue={quiz.title}
+          styles={{ input: { fontSize: "var(--mantine-font-size-xl)", fontWeight: 700 } }}
+          onBlur={(e) => {
+            const title = e.target.value.trim();
+            if (title && title !== quiz.title) mutate("PATCH", `/api/quizzes/${quizId}`, { title });
+          }}
+        />
+        <FileButton accept="image/*" onChange={uploadLogo} disabled={locked}>
+          {(props) => (
+            <Button variant="default" {...props}>
+              Загрузить эмблему
+            </Button>
+          )}
+        </FileButton>
+        {quiz.logo && (
+          <Button
+            variant="default"
+            disabled={locked}
+            onClick={() => mutate("PATCH", `/api/quizzes/${quizId}`, { logo_filename: null })}
+          >
+            Убрать эмблему
+          </Button>
+        )}
+        <Button onClick={start}>Начать игру</Button>
+      </Group>
+
+      <Grid align="flex-start">
+        <Grid.Col span={{ base: 12, md: 4 }}>
+          <Fieldset variant="unstyled" disabled={locked} m={0}>
+            <Paper withBorder p="sm">
+              <SectionLabel>Туры</SectionLabel>
+              <Stack gap="sm">
+                {quiz.rounds.map((r, i) => (
+                  <div key={r.id}>
+                    <NavLink
+                      component="div"
+                      color="blue"
+                      bdrs="sm"
+                      noWrap
+                      active={isSelected("round", r.id)}
+                      onClick={() => setSelection({ kind: "round", id: r.id })}
+                      label={
+                        <Text span fw={600}>
+                          {i + 1}. {r.title || "Без названия"}
+                        </Text>
+                      }
+                      rightSection={
+                        <Group gap={4} wrap="nowrap">
+                          <Badge>{ROUND_KINDS[r.kind].short}</Badge>
+                          {r.kind === "free" && r.stakes && <Badge color="yellow">ставки</Badge>}
+                          <RowAction title="Выше" onClick={() => mutate("POST", `/api/rounds/${r.id}/move`, { delta: -1 })}>
                             ↑
-                          </button>
-                          <button className="btn ghost small" onClick={() => mutate("POST", `/api/categories/${c.id}/move`, { delta: 1 })}>
+                          </RowAction>
+                          <RowAction title="Ниже" onClick={() => mutate("POST", `/api/rounds/${r.id}/move`, { delta: 1 })}>
                             ↓
-                          </button>
-                          <button
-                            className="btn ghost small"
-                            title="Удалить категорию"
-                            onClick={() => deleteCategory(c.id, c.name)}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="value-chips">
-                          {c.questions.map((q) => (
-                            <button
-                              key={q.id}
-                              className={`value-chip ${q.is_secret ? "secret" : ""} ${selection?.kind === "question" && selection.id === q.id ? "selected" : ""}`}
-                              title={q.text}
-                              onClick={() => setSelection({ kind: "question", id: q.id })}
-                            >
-                              {q.value}
-                              {q.is_secret ? " 🎁" : ""}
-                              {q.media ? (q.media.kind === "audio" ? " ♪" : " ▣") : ""}
-                            </button>
+                          </RowAction>
+                        </Group>
+                      }
+                    />
+                    <Stack gap={2} pl="md">
+                      {r.kind === "jeopardy" ? (
+                        <>
+                          {r.categories.map((c) => (
+                            <div key={c.id}>
+                              <Group gap={4} wrap="nowrap" px="sm" py={4}>
+                                <Text flex={1} truncate>
+                                  {c.name || "Без названия"}
+                                </Text>
+                                <RowAction title="Переименовать" onClick={() => renameCategory(c.id, c.name)}>
+                                  ✎
+                                </RowAction>
+                                <RowAction onClick={() => mutate("POST", `/api/categories/${c.id}/move`, { delta: -1 })}>
+                                  ↑
+                                </RowAction>
+                                <RowAction onClick={() => mutate("POST", `/api/categories/${c.id}/move`, { delta: 1 })}>
+                                  ↓
+                                </RowAction>
+                                <RowAction title="Удалить категорию" onClick={() => deleteCategory(c.id, c.name)}>
+                                  ✕
+                                </RowAction>
+                              </Group>
+                              <Group gap={4} px="sm" pb="xs">
+                                {c.questions.map((q) => (
+                                  <Button
+                                    key={q.id}
+                                    size="compact-sm"
+                                    variant={isSelected("question", q.id) ? "filled" : "default"}
+                                    style={q.is_secret ? { borderStyle: "dashed" } : undefined}
+                                    title={q.text}
+                                    onClick={() => setSelection({ kind: "question", id: q.id })}
+                                  >
+                                    {q.value}
+                                    {q.is_secret ? " 🎁" : ""}
+                                    {q.media ? (q.media.kind === "audio" ? " ♪" : " ▣") : ""}
+                                  </Button>
+                                ))}
+                                <Button size="compact-sm" variant="default" onClick={() => addQuestion(r, c.id)}>
+                                  +
+                                </Button>
+                              </Group>
+                            </div>
                           ))}
-                          <button className="value-chip" onClick={() => addQuestion(r, c.id)}>
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <div
-                      className="tree-item muted"
-                      onClick={() => addCategory(r.id)}
-                    >
-                      + категория
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {r.questions.map((q, qi) => (
-                      <div
-                        key={q.id}
-                        className={`tree-item ${selection?.kind === "question" && selection.id === q.id ? "selected" : ""}`}
-                        onClick={() => setSelection({ kind: "question", id: q.id })}
-                      >
-                        <span className="grow">
-                          {qi + 1}. {q.text || <span className="muted">пустой вопрос</span>}
-                        </span>
-                        {q.options.length > 0 && <span className="chip">варианты</span>}
-                        {q.media && <span className="chip">{q.media.kind === "audio" ? "♪" : "▣"}</span>}
-                      </div>
-                    ))}
-                    <div className="tree-item muted" onClick={() => addQuestion(r)}>
-                      + вопрос
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          <div className="tree-item" style={{ color: "#0071e3" }} onClick={addRound}>
-            + тур
-          </div>
-        </fieldset>
+                          <AddButton onClick={() => addCategory(r.id)}>+ категория</AddButton>
+                        </>
+                      ) : (
+                        <>
+                          {r.questions.map((q, qi) => (
+                            <NavLink
+                              key={q.id}
+                              component="div"
+                              color="blue"
+                              bdrs="sm"
+                              noWrap
+                              active={isSelected("question", q.id)}
+                              onClick={() => setSelection({ kind: "question", id: q.id })}
+                              label={
+                                <>
+                                  {qi + 1}.{" "}
+                                  {q.text || (
+                                    <Text span c="dimmed" inherit>
+                                      пустой вопрос
+                                    </Text>
+                                  )}
+                                </>
+                              }
+                              rightSection={
+                                (q.options.length > 0 || q.media) && (
+                                  <Group gap={4} wrap="nowrap">
+                                    {q.options.length > 0 && <Badge>варианты</Badge>}
+                                    {q.media && <Badge>{q.media.kind === "audio" ? "♪" : "▣"}</Badge>}
+                                  </Group>
+                                )
+                              }
+                            />
+                          ))}
+                          <AddButton onClick={() => addQuestion(r)}>+ вопрос</AddButton>
+                        </>
+                      )}
+                    </Stack>
+                  </div>
+                ))}
+                <Button variant="light" color="blue" onClick={addRound}>
+                  + тур
+                </Button>
+              </Stack>
+            </Paper>
+          </Fieldset>
+        </Grid.Col>
 
-        <fieldset className="plain card pane" disabled={locked}>
-          {selectedRound && (
-            <RoundSettings
-              key={selectedRound.id}
-              round={selectedRound}
-              mutate={mutate}
-              onDeleted={() => setSelection(null)}
-            />
-          )}
-          {selectedQuestion && questionRound && (
-            <QuestionForm
-              key={selectedQuestion.id}
-              question={selectedQuestion}
-              round={questionRound}
-              mutate={mutate}
-              notify={show}
-              onDeleted={() => setSelection(null)}
-            />
-          )}
-          {!selectedRound && !selectedQuestion && (
-            <p className="muted">Выберите тур или вопрос слева.</p>
-          )}
-        </fieldset>
-      </div>
-      {toast}
-    </main>
+        <Grid.Col span={{ base: 12, md: 8 }}>
+          <Fieldset variant="unstyled" disabled={locked} m={0}>
+            <Paper withBorder p="md">
+              {selectedRound && (
+                <RoundSettings
+                  key={selectedRound.id}
+                  round={selectedRound}
+                  mutate={mutate}
+                  onDeleted={() => setSelection(null)}
+                />
+              )}
+              {selectedQuestion && questionRound && (
+                <QuestionForm
+                  key={selectedQuestion.id}
+                  question={selectedQuestion}
+                  round={questionRound}
+                  mutate={mutate}
+                  onDeleted={() => setSelection(null)}
+                />
+              )}
+              {!selectedRound && !selectedQuestion && <Text c="dimmed">Выберите тур или вопрос слева.</Text>}
+            </Paper>
+          </Fieldset>
+        </Grid.Col>
+      </Grid>
+    </Stack>
+  );
+}
+
+function AddButton(props: { onClick: () => void; children: ReactNode }) {
+  return (
+    <Box>
+      <Button variant="subtle" color="gray" size="compact-sm" onClick={props.onClick}>
+        {props.children}
+      </Button>
+    </Box>
   );
 }

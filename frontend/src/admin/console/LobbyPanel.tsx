@@ -1,16 +1,18 @@
+import { Button, Paper, Stack, Text } from "@mantine/core";
+import { SectionLabel } from "../ui";
 import type { PanelProps } from "./types";
 
 export default function LobbyPanel({ view, send }: PanelProps) {
   return (
-    <div className="card console-pane">
-      <p className="label">Лобби</p>
-      <p>
-        Команды входят по QR на общем экране или по ссылке <b>{view.join_url}</b>.
-      </p>
-      <p className="muted">Подключилось команд: {view.state.teams.length}</p>
-      <button className="btn primary" onClick={() => send({ type: "start_game" })}>
-        Старт
-      </button>
-    </div>
+    <Paper withBorder p="md">
+      <SectionLabel>Лобби</SectionLabel>
+      <Stack align="flex-start">
+        <Text>
+          Команды входят по QR на общем экране или по ссылке <b>{view.join_url}</b>.
+        </Text>
+        <Text c="dimmed">Подключилось команд: {view.state.teams.length}</Text>
+        <Button onClick={() => send({ type: "start_game" })}>Старт</Button>
+      </Stack>
+    </Paper>
   );
 }

@@ -1,24 +1,30 @@
+import { Box, Button, Checkbox, Group, Input, NumberInput, Select, SimpleGrid, Stack, TextInput } from "@mantine/core";
 import type { RoundData } from "../lib/types";
 import { confirmDialog } from "./dialogs";
 import type { Mutate } from "./QuizEditor";
+import { ROUND_KINDS } from "./roundKinds";
+import { SectionLabel } from "./ui";
 
 const DISCUSS_PRESETS = [30, 60];
 
-function NumberField(props: { label: string; value: number; min?: number; onSave: (v: number) => void }) {
+const BUZZER_MODES = [
+  { value: "instant", label: "сразу" },
+  { value: "bar", label: "после полоски" },
+];
+
+/** Number input that saves on blur; remounts when the saved value changes from outside. */
+function NumberField(props: { label?: string; value: number; min?: number; onSave: (v: number) => void }) {
   return (
-    <label className="field">
-      <span>{props.label}</span>
-      <input
-        type="number"
-        min={props.min ?? 0}
-        key={props.value}
-        defaultValue={props.value}
-        onBlur={(e) => {
-          const v = Number(e.target.value);
-          if (Number.isFinite(v) && v !== props.value) props.onSave(v);
-        }}
-      />
-    </label>
+    <NumberInput
+      label={props.label}
+      min={props.min ?? 0}
+      key={props.value}
+      defaultValue={props.value}
+      onBlur={(e) => {
+        const v = Number(e.currentTarget.value);
+        if (Number.isFinite(v) && v !== props.value) props.onSave(v);
+      }}
+    />
   );
 }
 
@@ -34,93 +40,81 @@ export default function RoundSettings({
   const patch = (body: Partial<RoundData>) => mutate("PATCH", `/api/rounds/${round.id}`, body);
 
   return (
-    <div>
-      <p className="label">Тур · {round.kind === "jeopardy" ? "Своя игра" : "Свободный ввод"}</p>
-      <label className="field">
-        <span>Название</span>
-        <input
-          type="text"
+    <Stack>
+      <Box>
+        <SectionLabel>Тур · {ROUND_KINDS[round.kind].title}</SectionLabel>
+        <TextInput
+          label="Название"
           key={round.title}
           defaultValue={round.title}
           onBlur={(e) => e.target.value !== round.title && patch({ title: e.target.value })}
         />
-      </label>
+      </Box>
 
       {round.kind === "jeopardy" ? (
         <>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={round.minus_on_wrong}
-              onChange={(e) => patch({ minus_on_wrong: e.target.checked })}
+          <Checkbox
+            label="Минус за неверный ответ"
+            checked={round.minus_on_wrong}
+            onChange={(e) => patch({ minus_on_wrong: e.currentTarget.checked })}
+          />
+          <SimpleGrid cols={2}>
+            <Select
+              label="Кнопка"
+              data={BUZZER_MODES}
+              allowDeselect={false}
+              value={round.buzzer_mode}
+              onChange={(v) => v && patch({ buzzer_mode: v as RoundData["buzzer_mode"] })}
             />
-            Минус за неверный ответ
-          </label>
-          <div className="grid-2">
-            <label className="field">
-              <span>Кнопка</span>
-              <select
-                value={round.buzzer_mode}
-                onChange={(e) => patch({ buzzer_mode: e.target.value as RoundData["buzzer_mode"] })}
-              >
-                <option value="instant">сразу</option>
-                <option value="bar">после полоски</option>
-              </select>
-            </label>
             {round.buzzer_mode === "bar" && (
               <NumberField label="Полоска, секунд" value={round.bar_seconds} onSave={(v) => patch({ bar_seconds: v })} />
             )}
-          </div>
+          </SimpleGrid>
         </>
       ) : (
         <>
-          <div className="field">
-            <span>Обсуждение, секунд</span>
-            <div className="presets">
+          <Input.Wrapper label="Обсуждение, секунд">
+            <Group gap="xs" mt={4} mb={6}>
               {DISCUSS_PRESETS.map((p) => (
-                <button
+                <Button
                   key={p}
-                  className={`btn small ${round.discuss_seconds === p ? "primary" : ""}`}
+                  size="compact-sm"
+                  variant={round.discuss_seconds === p ? "filled" : "default"}
                   onClick={() => patch({ discuss_seconds: p })}
                 >
                   {p}
-                </button>
+                </Button>
               ))}
-            </div>
-            <input
-              type="number"
-              min={0}
-              key={round.discuss_seconds}
-              defaultValue={round.discuss_seconds}
-              onBlur={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v) && v !== round.discuss_seconds) patch({ discuss_seconds: v });
-              }}
-            />
-          </div>
+            </Group>
+            <NumberField value={round.discuss_seconds} onSave={(v) => patch({ discuss_seconds: v })} />
+          </Input.Wrapper>
           <NumberField label="Ввод ответа, секунд" value={round.input_seconds} onSave={(v) => patch({ input_seconds: v })} />
-          <label className="check">
-            <input type="checkbox" checked={round.stakes} onChange={(e) => patch({ stakes: e.target.checked })} />
-            Ставки (верно ×2, неверно −1 номинал)
-          </label>
+          <Checkbox
+            label="Ставки (верно ×2, неверно −1 номинал)"
+            checked={round.stakes}
+            onChange={(e) => patch({ stakes: e.currentTarget.checked })}
+          />
         </>
       )}
 
-      <button
-        className="btn no"
-        onClick={async () => {
-          const ok = await confirmDialog({
-            title: `Удалить тур «${round.title}»?`,
-            message: "Вместе с ним удалятся все его вопросы.",
-            confirmLabel: "Удалить",
-            danger: true,
-          });
-          if (!ok) return;
-          if (await mutate("DELETE", `/api/rounds/${round.id}`)) onDeleted();
-        }}
-      >
-        Удалить тур
-      </button>
-    </div>
+      <Group>
+        <Button
+          color="red"
+          variant="outline"
+          onClick={async () => {
+            const ok = await confirmDialog({
+              title: `Удалить тур «${round.title}»?`,
+              message: "Вместе с ним удалятся все его вопросы.",
+              confirmLabel: "Удалить",
+              danger: true,
+            });
+            if (!ok) return;
+            if (await mutate("DELETE", `/api/rounds/${round.id}`)) onDeleted();
+          }}
+        >
+          Удалить тур
+        </Button>
+      </Group>
+    </Stack>
   );
 }

@@ -1,13 +1,14 @@
-import { Button, Modal, Stack, Text } from "@mantine/core";
+import { Anchor, Badge, Button, Grid, Group, Modal, Paper, Stack, Text, Title } from "@mantine/core";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Qr } from "../../components/Qr";
-import { api, ApiError } from "../../lib/api";
+import { api } from "../../lib/api";
 import { useSocket } from "../../lib/socket";
 import type { AdminCommand, AdminView, ServerMessage } from "../../lib/types";
 import { confirmDialog } from "../dialogs";
+import { notifyApiError, notifyError } from "../notify";
 import { ROUND_KINDS } from "../roundKinds";
-import { useToast } from "../useToast";
+import { SectionLabel } from "../ui";
 import "./console.css";
 import FreePanel from "./FreePanel";
 import JeopardyPanel from "./JeopardyPanel";
@@ -21,21 +22,17 @@ export default function Console() {
   const [view, setView] = useState<AdminView | null | undefined>(undefined);
   const [screenUrl, setScreenUrl] = useState<string | null>(null);
   const [showScreenQr, setShowScreenQr] = useState(false);
-  const { toast, show } = useToast();
 
-  const onMessage = useCallback(
-    (m: ServerMessage<AdminView>) => {
-      if (m.type === "state") setView(m.view);
-      else if (m.type === "error") show(m.message);
-    },
-    [show],
-  );
+  const onMessage = useCallback((m: ServerMessage<AdminView>) => {
+    if (m.type === "state") setView(m.view);
+    else if (m.type === "error") notifyError(m.message);
+  }, []);
   const { send: rawSend, status } = useSocket<AdminView>("/ws/admin", onMessage);
   const send = useCallback(
     (cmd: AdminCommand) => {
-      if (!rawSend(cmd)) show("Нет связи с сервером — команда не отправлена");
+      if (!rawSend(cmd)) notifyError("Нет связи с сервером — команда не отправлена");
     },
-    [rawSend, show],
+    [rawSend],
   );
 
   useEffect(() => {
@@ -55,21 +52,22 @@ export default function Console() {
     try {
       await api("POST", "/api/game/stop");
     } catch (e) {
-      show(e instanceof ApiError ? e.detail : "Ошибка");
+      notifyApiError(e, "Ошибка");
     }
   };
 
-  if (status === "unauthorized") return <main className="admin-main">Требуется вход</main>;
-  if (view === undefined) return <main className="admin-main muted">Подключаемся…</main>;
+  if (status === "unauthorized") return <Text>Требуется вход</Text>;
+  if (view === undefined) return <Text c="dimmed">Подключаемся…</Text>;
   if (view === null)
     return (
-      <main className="admin-main">
-        <div className="card console-pane">
-          <p>Нет активной игры.</p>
-          <Link to="/admin">Выберите квиз и нажмите «Начать игру»</Link>
-        </div>
-        {toast}
-      </main>
+      <Paper withBorder p="md">
+        <Stack gap="xs">
+          <Text>Нет активной игры.</Text>
+          <Anchor component={Link} to="/admin" size="sm">
+            Выберите квиз и нажмите «Начать игру»
+          </Anchor>
+        </Stack>
+      </Paper>
     );
 
   const st = view.state;
@@ -81,16 +79,16 @@ export default function Console() {
   if (st.stage === "lobby") panel = <LobbyPanel view={view} send={send} />;
   else if (st.stage === "intro" && round)
     panel = (
-      <div className="card console-pane">
-        <p className="label">
+      <Paper withBorder p="md">
+        <SectionLabel>
           Тур {st.round_index + 1} из {view.quiz.rounds.length} · {ROUND_KINDS[round.kind].title}
-        </p>
-        <h3 style={{ marginTop: 0 }}>{round.title}</h3>
-        <p className="muted">На экране заставка тура.</p>
-        <button className="btn primary" onClick={() => send({ type: "start_round" })}>
-          Начать тур
-        </button>
-      </div>
+        </SectionLabel>
+        <Stack align="flex-start">
+          <Title order={3}>{round.title}</Title>
+          <Text c="dimmed">На экране заставка тура.</Text>
+          <Button onClick={() => send({ type: "start_round" })}>Начать тур</Button>
+        </Stack>
+      </Paper>
     );
   else if (st.stage === "jeopardy") panel = <JeopardyPanel view={view} send={send} />;
   else if (st.stage === "free" && st.free?.phase === "review") panel = <ReviewPanel view={view} send={send} />;
@@ -98,50 +96,50 @@ export default function Console() {
   else if (st.stage === "finished") {
     const winner = [...st.teams].sort((a, b) => b.score - a.score)[0];
     panel = (
-      <div className="card console-pane">
-        <p className="label">Игра окончена</p>
-        {winner && (
-          <h3 style={{ marginTop: 0 }}>
-            Победитель: {winner.name} ({winner.score})
-          </h3>
-        )}
-        <button className="btn primary" onClick={closeGame}>
-          Закрыть игру
-        </button>
-      </div>
+      <Paper withBorder p="md">
+        <SectionLabel>Игра окончена</SectionLabel>
+        <Stack align="flex-start">
+          {winner && (
+            <Title order={3}>
+              Победитель: {winner.name} ({winner.score})
+            </Title>
+          )}
+          <Button onClick={closeGame}>Закрыть игру</Button>
+        </Stack>
+      </Paper>
     );
   }
 
   return (
-    <main className="admin-main">
-      <div className="console-head">
-        <h2>
+    <Stack>
+      <Group gap="xs">
+        <Title order={4} flex={1} miw={200}>
           Пульт · {view.quiz.title}
           {round ? ` · Тур ${st.round_index + 1}` : ""} · {STAGE_TITLES[st.stage]}
-        </h2>
-        {status !== "open" && <span className="chip yellow">нет связи…</span>}
+        </Title>
+        {status !== "open" && <Badge color="yellow">нет связи…</Badge>}
         {screenUrl && (
           <>
-            <button className="btn" onClick={() => window.open(screenUrl, "tquiz-screen")}>
+            <Button variant="default" onClick={() => window.open(screenUrl, "tquiz-screen")}>
               Открыть экран
-            </button>
-            <button className="btn" onClick={() => setShowScreenQr(true)}>
+            </Button>
+            <Button variant="default" onClick={() => setShowScreenQr(true)}>
               QR экрана
-            </button>
+            </Button>
           </>
         )}
-        <button className="btn" onClick={() => send({ type: "show_qr", visible: !st.qr_visible })}>
+        <Button variant="default" onClick={() => send({ type: "show_qr", visible: !st.qr_visible })}>
           QR входа: {st.qr_visible ? "скрыть" : "показать"}
-        </button>
-        <button
-          className={`btn ${st.overlay === "leaderboard" ? "primary" : ""}`}
+        </Button>
+        <Button
+          variant={st.overlay === "leaderboard" ? "filled" : "default"}
           onClick={() => send({ type: "set_overlay", overlay: st.overlay === "leaderboard" ? null : "leaderboard" })}
         >
           {st.overlay === "leaderboard" ? "Убрать рейтинг" : "Рейтинг на экран"}
-        </button>
+        </Button>
         {inGame && hasNextRound && (
-          <button
-            className="btn"
+          <Button
+            variant="default"
             onClick={async () => {
               const unfinished =
                 (st.stage === "free" && st.free?.phase === "question") ||
@@ -163,36 +161,38 @@ export default function Console() {
             }}
           >
             След. тур →
-          </button>
+          </Button>
         )}
         {st.stage !== "finished" && st.stage !== "lobby" && (
-          <button
-            className="btn"
+          <Button
+            variant="default"
             onClick={async () => {
               const ok = await confirmDialog({ title: "Завершить игру и показать победителя?", confirmLabel: "Завершить" });
               if (ok) send({ type: "finish_game" });
             }}
           >
             Завершить игру
-          </button>
+          </Button>
         )}
         {st.stage === "lobby" && (
-          <button className="btn" onClick={closeGame}>
+          <Button variant="default" onClick={closeGame}>
             Закрыть игру
-          </button>
+          </Button>
         )}
-      </div>
+      </Group>
 
-      <div className="console-body">
-        <div>{panel}</div>
-        <TeamsPanel view={view} send={send} />
-      </div>
+      <Grid align="flex-start">
+        <Grid.Col span={{ base: 12, md: 8, lg: 9 }}>{panel}</Grid.Col>
+        <Grid.Col span={{ base: 12, md: 4, lg: 3 }}>
+          <TeamsPanel view={view} send={send} />
+        </Grid.Col>
+      </Grid>
 
       <Modal opened={showScreenQr && !!screenUrl} onClose={() => setShowScreenQr(false)} title="Откройте ссылку на ТВ или проекторе">
         {screenUrl && (
           <Stack align="center">
             <Qr value={screenUrl} size={260} />
-            <Text size="sm" style={{ wordBreak: "break-all" }} ta="center">
+            <Text style={{ wordBreak: "break-all" }} ta="center">
               {screenUrl}
             </Text>
             <Button variant="default" onClick={() => setShowScreenQr(false)}>
@@ -201,7 +201,6 @@ export default function Console() {
           </Stack>
         )}
       </Modal>
-      {toast}
-    </main>
+    </Stack>
   );
 }

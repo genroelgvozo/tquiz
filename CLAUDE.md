@@ -12,7 +12,8 @@
 
 - Бэкенд: Python, FastAPI (uvicorn), WebSocket, SQLite. Медиа хранятся файлами в `data/media`.
 - Фронтенд: React, Vite, TypeScript. Одно SPA с маршрутами `/admin`, `/screen`, `/play`. В проде его раздаёт FastAPI.
-- Админка на Mantine 8 (`@mantine/core`, `@mantine/modals`). Mantine 9 требует React 19, поэтому пока восьмая версия. Админка грузится отдельным чанком (`React.lazy` в `App.tsx`), чтобы Mantine не попадал на телефоны и экран. В `/play` и `/screen` Mantine не импортируй.
+- Админка на Mantine 8 (`@mantine/core`, `@mantine/modals`, `@mantine/notifications`). Mantine 9 требует React 19, поэтому пока восьмая версия. Админка грузится отдельным чанком (`React.lazy` в `App.tsx`), чтобы Mantine не попадал на телефоны и экран. В `/play` и `/screen` Mantine не импортируй.
+- Админку собирай из компонентов Mantine: раскладка через `Stack`/`Group`/`Grid`, отступы через пропсы темы. Своих классов и `style={{ margin… }}` не заводи. Свой CSS (`admin.css`, `console/console.css`) только там, где у Mantine нет аналога: мини-сетка «Своей игры» и перекраска общего `PhaseTimerBar`. Ошибки показывай через `src/admin/notify.ts`, подписи блоков через `SectionLabel` из `src/admin/ui.tsx`.
 - В админке никаких `window.confirm/prompt/alert`: нативный диалог снимает полноэкранный режим с окна экрана, если всё открыто на одном компьютере. Используй `src/admin/dialogs.tsx` (`confirmDialog`, `promptDialog`, `newRoundDialog`).
 - Названия и описания типов туров для админки лежат в `src/admin/roundKinds.ts`. Окно «Новый тур» строится по этому списку. Если добавить тип в `RoundKind`, компилятор не даст собрать проект, пока тип не описан там.
 - Деплой: docker compose (приложение и Caddy с автоматическим HTTPS).
@@ -34,8 +35,10 @@
 cd backend
 uv sync                      # зависимости
 uv run pytest                # тесты
-ADMIN_PASSWORD=dev SECRET_KEY=dev uv run uvicorn --factory app.main:create_app --reload --port 8000
+ADMIN_PASSWORD=dev SECRET_KEY=dev-secret uv run uvicorn --factory app.main:create_app --reload --port 8000
 ```
+
+`SECRET_KEY` не короче 8 символов, иначе бэк не стартует.
 
 Приложение запускается только как фабрика (`--factory app.main:create_app`): модульного `app` нет.
 

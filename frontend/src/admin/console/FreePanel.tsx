@@ -1,6 +1,8 @@
+import { Badge, Box, Button, Group, List, Paper, Stack, Text } from "@mantine/core";
 import { PhaseTimerBar } from "../../components/PhaseTimerBar";
 import { useServerClock } from "../../lib/clock";
 import { confirmDialog } from "../dialogs";
+import { AudioControls, QuestionBox } from "./common";
 import type { PanelProps } from "./types";
 
 export default function FreePanel({ view, send }: PanelProps) {
@@ -14,114 +16,97 @@ export default function FreePanel({ view, send }: PanelProps) {
   const t = free.timer;
 
   return (
-    <div className="card console-pane">
-      <div className="row" style={{ marginBottom: 12 }}>
-        <button className="btn" disabled={free.index === 0} onClick={() => send({ type: "open_question", index: free.index - 1 })}>
-          ←
-        </button>
-        <b>
-          Вопрос {free.index + 1} / {total}
-        </b>
-        <button
-          className="btn"
-          disabled={free.index >= total - 1}
-          onClick={() => send({ type: "open_question", index: free.index + 1 })}
-        >
-          →
-        </button>
-        <span style={{ flex: 1 }} />
-        <button
-          className={`btn ${free.index >= total - 1 ? "primary" : ""}`}
-          onClick={async () => {
-            const early = free.index < total - 1 || (t.status !== "finished" && t.status !== "idle");
-            const ok =
-              !early ||
-              (await confirmDialog({
-                title: "Начать разбор?",
-                message: "Вернуться к вопросам этого тура будет нельзя.",
-                confirmLabel: "Начать разбор",
-              }));
-            if (ok) send({ type: "start_review" });
-          }}
-        >
-          Начать разбор
-        </button>
-      </div>
+    <Paper withBorder p="md">
+      <Stack gap="sm">
+        <Group gap="xs">
+          <Button variant="default" disabled={free.index === 0} onClick={() => send({ type: "open_question", index: free.index - 1 })}>
+            ←
+          </Button>
+          <Text fw={700}>
+            Вопрос {free.index + 1} / {total}
+          </Text>
+          <Button
+            variant="default"
+            disabled={free.index >= total - 1}
+            onClick={() => send({ type: "open_question", index: free.index + 1 })}
+          >
+            →
+          </Button>
+          <Button
+            ml="auto"
+            variant={free.index >= total - 1 ? "filled" : "default"}
+            onClick={async () => {
+              const early = free.index < total - 1 || (t.status !== "finished" && t.status !== "idle");
+              const ok =
+                !early ||
+                (await confirmDialog({
+                  title: "Начать разбор?",
+                  message: "Вернуться к вопросам этого тура будет нельзя.",
+                  confirmLabel: "Начать разбор",
+                }));
+              if (ok) send({ type: "start_review" });
+            }}
+          >
+            Начать разбор
+          </Button>
+        </Group>
 
-      <div className="qbox">
-        {q.text || <span className="muted">(без текста)</span>}
-        {q.options.length > 0 && (
-          <ol type="A" style={{ margin: "8px 0 0", paddingLeft: 22 }}>
-            {q.options.map((o, i) => (
-              <li key={i} style={{ fontWeight: i === q.correct_option ? 700 : 400 }}>
-                {o} {i === q.correct_option && "✓"}
-              </li>
-            ))}
-          </ol>
-        )}
-        <div className="answer">
-          Ответ: {q.answer || "—"} · номинал {q.nominal}
-        </div>
-      </div>
+        <QuestionBox text={q.text} answer={`${q.answer || "—"} · номинал ${q.nominal}`}>
+          {q.options.length > 0 && (
+            <List type="ordered" listStyleType="upper-alpha" size="sm" mt="xs" style={{ whiteSpace: "normal" }}>
+              {q.options.map((o, i) => (
+                <List.Item key={i} fw={i === q.correct_option ? 700 : 400}>
+                  {o} {i === q.correct_option && "✓"}
+                </List.Item>
+              ))}
+            </List>
+          )}
+        </QuestionBox>
 
-      {q.media?.kind === "audio" && (
-        <div className="row" style={{ marginBottom: 12 }}>
-          <button className="btn" onClick={() => send({ type: "audio", action: "play" })}>
-            ▶ Музыка
-          </button>
-          <button className="btn" onClick={() => send({ type: "audio", action: "pause" })}>
-            ⏸
-          </button>
-          <button className="btn" onClick={() => send({ type: "audio", action: "restart" })}>
-            ↺ С начала
-          </button>
-        </div>
-      )}
+        {q.media?.kind === "audio" && <AudioControls send={send} />}
 
-      <div className="light-timer" style={{ marginBottom: 12 }}>
-        <PhaseTimerBar timer={t} now={now} />
-      </div>
-      <div className="row">
-        {t.status === "idle" && (
-          <button className="btn primary" onClick={() => send({ type: "timer_start" })}>
-            Запустить таймер
-          </button>
-        )}
-        {t.status === "running" && (
-          <button className="btn" onClick={() => send({ type: "timer_pause" })}>
-            Пауза
-          </button>
-        )}
-        {t.status === "paused" && (
-          <button className="btn" onClick={() => send({ type: "timer_resume" })}>
-            Продолжить
-          </button>
-        )}
-        {(t.status === "running" || t.status === "paused") && (
-          <>
-            <button className="btn" onClick={() => send({ type: "timer_add" })}>
-              +10 с
-            </button>
-            <button className="btn" onClick={() => send({ type: "timer_finish" })}>
-              Завершить
-            </button>
-          </>
-        )}
-        {t.status === "finished" && <span className="muted">Время вышло</span>}
-      </div>
+        {/* the timer bar is shared with the hall screen; .light-timer recolours it for the light admin */}
+        <Box className="light-timer">
+          <PhaseTimerBar timer={t} now={now} />
+        </Box>
+        <Group gap="xs">
+          {t.status === "idle" && <Button onClick={() => send({ type: "timer_start" })}>Запустить таймер</Button>}
+          {t.status === "running" && (
+            <Button variant="default" onClick={() => send({ type: "timer_pause" })}>
+              Пауза
+            </Button>
+          )}
+          {t.status === "paused" && (
+            <Button variant="default" onClick={() => send({ type: "timer_resume" })}>
+              Продолжить
+            </Button>
+          )}
+          {(t.status === "running" || t.status === "paused") && (
+            <>
+              <Button variant="default" onClick={() => send({ type: "timer_add" })}>
+                +10 с
+              </Button>
+              <Button variant="default" onClick={() => send({ type: "timer_finish" })}>
+                Завершить
+              </Button>
+            </>
+          )}
+          {t.status === "finished" && <Text c="dimmed">Время вышло</Text>}
+        </Group>
 
-      <div className="answered-list">
-        {view.state.teams.map((team) => {
-          const a = answers[team.id];
-          const done = !!a && (a.text.trim() !== "" || a.option !== null);
-          return (
-            <span key={team.id} className={`chip ${done ? "done" : ""}`}>
-              {done ? "✓ " : ""}
-              {team.name}
-            </span>
-          );
-        })}
-      </div>
-    </div>
+        <Group gap={6}>
+          {view.state.teams.map((team) => {
+            const a = answers[team.id];
+            const done = !!a && (a.text.trim() !== "" || a.option !== null);
+            return (
+              <Badge key={team.id} color={done ? "green" : "gray"}>
+                {done ? "✓ " : ""}
+                {team.name}
+              </Badge>
+            );
+          })}
+        </Group>
+      </Stack>
+    </Paper>
   );
 }

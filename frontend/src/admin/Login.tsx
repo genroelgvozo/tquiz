@@ -1,3 +1,4 @@
+import { Button, Paper, PasswordInput, Stack, Title } from "@mantine/core";
 import { useState } from "react";
 import { api, ApiError } from "../lib/api";
 
@@ -21,16 +22,20 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <form className="login card" onSubmit={submit}>
-      <h2 style={{ marginTop: 0 }}>TQuiz · ведущий</h2>
-      <label className="field">
-        <span>Пароль</span>
-        <input type="password" value={password} autoFocus onChange={(e) => setPassword(e.target.value)} />
-      </label>
-      {error && <p className="error-text">{error}</p>}
-      <button className="btn primary" disabled={busy || !password}>
-        Войти
-      </button>
-    </form>
+    <Paper component="form" onSubmit={submit} withBorder p="lg" w={320} mx="auto">
+      <Stack>
+        <Title order={3}>TQuiz · ведущий</Title>
+        <PasswordInput
+          label="Пароль"
+          value={password}
+          autoFocus
+          error={error}
+          onChange={(e) => setPassword(e.currentTarget.value)}
+        />
+        <Button type="submit" loading={busy} disabled={!password}>
+          Войти
+        </Button>
+      </Stack>
+    </Paper>
   );
 }

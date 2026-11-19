@@ -1,22 +1,43 @@
+import {
+  ActionIcon,
+  Box,
+  Button,
+  FileButton,
+  Group,
+  Image,
+  Input,
+  NumberInput,
+  Radio,
+  Select,
+  SimpleGrid,
+  Stack,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import { useState } from "react";
-import { ApiError, uploadMedia } from "../lib/api";
+import { uploadMedia } from "../lib/api";
 import type { QuestionData, RoundData } from "../lib/types";
 import { confirmDialog } from "./dialogs";
+import { notifyApiError } from "./notify";
 import type { Mutate } from "./QuizEditor";
+import { SectionLabel } from "./ui";
 
 const MAX_OPTIONS = 4;
+
+const QUESTION_TYPES = [
+  { value: "normal", label: "обычный" },
+  { value: "secret", label: "секрет" },
+];
 
 export default function QuestionForm({
   question,
   round,
   mutate,
-  notify,
   onDeleted,
 }: {
   question: QuestionData;
   round: RoundData;
   mutate: Mutate;
-  notify: (m: string) => void;
   onDeleted: () => void;
 }) {
   const path = `/api/questions/${question.id}`;
@@ -34,175 +55,168 @@ export default function QuestionForm({
     patch({ options: filled, correct_option: filled.length ? nextCorrect : null });
   };
 
-  const onUpload = async (file: File | undefined) => {
+  const onUpload = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
     try {
       const media = await uploadMedia(file);
       await patch({ media_filename: media.filename, media_kind: media.kind });
     } catch (e) {
-      notify(e instanceof ApiError ? e.detail : "Не удалось загрузить файл");
+      notifyApiError(e, "Не удалось загрузить файл");
     } finally {
       setUploading(false);
     }
   };
 
   const textField = (label: string, key: "text" | "answer", rows = 3) => (
-    <label className="field">
-      <span>{label}</span>
-      <textarea
-        rows={rows}
-        defaultValue={question[key]}
-        onBlur={(e) => e.target.value !== question[key] && patch({ [key]: e.target.value })}
-      />
-    </label>
+    <Textarea
+      label={label}
+      rows={rows}
+      resize="vertical"
+      defaultValue={question[key]}
+      onBlur={(e) => e.target.value !== question[key] && patch({ [key]: e.target.value })}
+    />
   );
 
   const optionalNumber = (label: string, key: "discuss_seconds" | "input_seconds", fallback: number) => (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        type="number"
-        min={0}
-        placeholder={`как в туре (${fallback})`}
-        defaultValue={question[key] ?? ""}
-        onBlur={(e) => {
-          const raw = e.target.value.trim();
-          const v = raw === "" ? null : Number(raw);
-          if (v !== question[key]) patch({ [key]: v });
-        }}
-      />
-    </label>
+    <NumberInput
+      label={label}
+      min={0}
+      placeholder={`как в туре (${fallback})`}
+      defaultValue={question[key] ?? ""}
+      onBlur={(e) => {
+        const raw = e.currentTarget.value.trim();
+        const v = raw === "" ? null : Number(raw);
+        if (v !== question[key]) patch({ [key]: v });
+      }}
+    />
+  );
+
+  const integerField = (label: string, key: "value" | "nominal", min?: number) => (
+    <NumberInput
+      label={label}
+      min={min}
+      defaultValue={question[key]}
+      onBlur={(e) => Number(e.currentTarget.value) !== question[key] && patch({ [key]: Number(e.currentTarget.value) })}
+    />
   );
 
   return (
-    <div>
-      <p className="label">Вопрос</p>
-
-      {isJeopardy ? (
-        <div className="grid-2">
-          <label className="field">
-            <span>Тип</span>
-            <select value={question.is_secret ? "secret" : "normal"} onChange={(e) => patch({ is_secret: e.target.value === "secret" })}>
-              <option value="normal">обычный</option>
-              <option value="secret">секрет</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>Стоимость</span>
-            <input
-              type="number"
-              defaultValue={question.value}
-              onBlur={(e) => Number(e.target.value) !== question.value && patch({ value: Number(e.target.value) })}
+    <Stack>
+      <Box>
+        <SectionLabel>Вопрос</SectionLabel>
+        {isJeopardy ? (
+          <SimpleGrid cols={2}>
+            <Select
+              label="Тип"
+              data={QUESTION_TYPES}
+              allowDeselect={false}
+              value={question.is_secret ? "secret" : "normal"}
+              onChange={(v) => patch({ is_secret: v === "secret" })}
             />
-          </label>
-        </div>
-      ) : (
-        <label className="field" style={{ maxWidth: 200 }}>
-          <span>Номинал</span>
-          <input
-            type="number"
-            min={0}
-            defaultValue={question.nominal}
-            onBlur={(e) => Number(e.target.value) !== question.nominal && patch({ nominal: Number(e.target.value) })}
-          />
-        </label>
-      )}
+            {integerField("Стоимость", "value")}
+          </SimpleGrid>
+        ) : (
+          <Box maw={200}>{integerField("Номинал", "nominal", 0)}</Box>
+        )}
+      </Box>
 
       {textField("Текст вопроса", "text", 4)}
       {textField("Правильный ответ (видишь только ты)", "answer", 2)}
 
-      <div className="field">
-        <span>Медиа (картинка или аудио)</span>
-        <div className="row">
-          <label className="btn">
-            {uploading ? "Загружаем…" : question.media ? "Заменить файл" : "Загрузить файл"}
-            <input
-              type="file"
-              accept="image/*,audio/*,.mp3,.m4a,.ogg,.wav"
-              hidden
-              onChange={(e) => onUpload(e.target.files?.[0])}
-            />
-          </label>
+      <Input.Wrapper label="Медиа (картинка или аудио)">
+        <Group gap="xs" mt={4}>
+          <FileButton accept="image/*,audio/*,.mp3,.m4a,.ogg,.wav" onChange={onUpload}>
+            {(props) => (
+              <Button variant="default" loading={uploading} {...props}>
+                {question.media ? "Заменить файл" : "Загрузить файл"}
+              </Button>
+            )}
+          </FileButton>
           {question.media && (
-            <button className="btn" onClick={() => patch({ media_filename: null, media_kind: null })}>
+            <Button variant="default" onClick={() => patch({ media_filename: null, media_kind: null })}>
               Убрать
-            </button>
+            </Button>
           )}
-        </div>
+        </Group>
         {question.media && (
-          <div className="media-preview">
+          <Box mt="xs">
             {question.media.kind === "image" ? (
-              <img src={question.media.url} alt="" />
+              <Image src={question.media.url} alt="" maw={260} mah={160} w="auto" fit="contain" radius="sm" />
             ) : (
               <audio controls src={question.media.url} preload="none" />
             )}
-          </div>
+          </Box>
         )}
-      </div>
+      </Input.Wrapper>
 
       {!isJeopardy && (
         <>
-          <div className="field">
-            <span>Варианты ответа (необязательно, до 4) — отметь правильный</span>
-            {options.map((opt, i) => (
-              <div className="option-row" key={i}>
-                <input
-                  type="radio"
-                  name={`correct-${question.id}`}
-                  checked={correct === i}
-                  onChange={() => {
-                    setCorrect(i);
-                    saveOptions(options, i);
-                  }}
-                />
-                <input
-                  type="text"
-                  className="field-input"
-                  value={opt}
-                  placeholder={`Вариант ${String.fromCharCode(65 + i)}`}
-                  onChange={(e) => setOptions(options.map((o, j) => (j === i ? e.target.value : o)))}
-                  onBlur={() => saveOptions(options, correct)}
-                  style={{ border: "1px solid var(--light-border)", borderRadius: 6, padding: "6px 8px" }}
-                />
-                <button
-                  className="btn ghost small"
-                  onClick={() => {
-                    const next = options.filter((_, j) => j !== i);
-                    const nextCorrect = correct === null || correct === i ? null : correct > i ? correct - 1 : correct;
-                    setOptions(next);
-                    setCorrect(nextCorrect);
-                    if (next.length === 0 || next.length >= 2) saveOptions(next, nextCorrect);
-                  }}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-            {options.length < MAX_OPTIONS && (
-              <div>
-                <button className="btn small" onClick={() => setOptions([...options, ""])}>
-                  + вариант
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="grid-2">
+          <Input.Wrapper label="Варианты ответа (необязательно, до 4) — отметь правильный">
+            <Stack gap={6} mt={4}>
+              {options.map((opt, i) => (
+                <Group key={i} gap="xs" wrap="nowrap">
+                  <Radio
+                    name={`correct-${question.id}`}
+                    aria-label={`Вариант ${String.fromCharCode(65 + i)} правильный`}
+                    checked={correct === i}
+                    onChange={() => {
+                      setCorrect(i);
+                      saveOptions(options, i);
+                    }}
+                  />
+                  <TextInput
+                    flex={1}
+                    value={opt}
+                    placeholder={`Вариант ${String.fromCharCode(65 + i)}`}
+                    onChange={(e) => setOptions(options.map((o, j) => (j === i ? e.currentTarget.value : o)))}
+                    onBlur={() => saveOptions(options, correct)}
+                  />
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    size="input-sm"
+                    title="Убрать вариант"
+                    onClick={() => {
+                      const next = options.filter((_, j) => j !== i);
+                      const nextCorrect = correct === null || correct === i ? null : correct > i ? correct - 1 : correct;
+                      setOptions(next);
+                      setCorrect(nextCorrect);
+                      if (next.length === 0 || next.length >= 2) saveOptions(next, nextCorrect);
+                    }}
+                  >
+                    ✕
+                  </ActionIcon>
+                </Group>
+              ))}
+              {options.length < MAX_OPTIONS && (
+                <Box>
+                  <Button size="compact-sm" variant="default" onClick={() => setOptions([...options, ""])}>
+                    + вариант
+                  </Button>
+                </Box>
+              )}
+            </Stack>
+          </Input.Wrapper>
+          <SimpleGrid cols={2}>
             {optionalNumber("Своё время обсуждения, с", "discuss_seconds", round.discuss_seconds)}
             {optionalNumber("Своё время ввода, с", "input_seconds", round.input_seconds)}
-          </div>
+          </SimpleGrid>
         </>
       )}
 
-      <button
-        className="btn no"
-        onClick={async () => {
-          if (!(await confirmDialog({ title: "Удалить вопрос?", confirmLabel: "Удалить", danger: true }))) return;
-          if (await mutate("DELETE", path)) onDeleted();
-        }}
-      >
-        Удалить вопрос
-      </button>
-    </div>
+      <Group>
+        <Button
+          color="red"
+          variant="outline"
+          onClick={async () => {
+            if (!(await confirmDialog({ title: "Удалить вопрос?", confirmLabel: "Удалить", danger: true }))) return;
+            if (await mutate("DELETE", path)) onDeleted();
+          }}
+        >
+          Удалить вопрос
+        </Button>
+      </Group>
+    </Stack>
   );
 }
