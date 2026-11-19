@@ -1,6 +1,8 @@
 import { Box, Button, Checkbox, Group, Input, NumberInput, Select, SimpleGrid, Stack, TextInput } from "@mantine/core";
 import type { RoundData } from "../lib/types";
+import { formatCellValues, parseCellValues } from "./cellValues";
 import { confirmDialog } from "./dialogs";
+import { notifyError } from "./notify";
 import type { Mutate } from "./QuizEditor";
 import { ROUND_KINDS } from "./roundKinds";
 import { SectionLabel } from "./ui";
@@ -57,6 +59,18 @@ export default function RoundSettings({
             label="Минус за неверный ответ"
             checked={round.minus_on_wrong}
             onChange={(e) => patch({ minus_on_wrong: e.currentTarget.checked })}
+          />
+          <TextInput
+            label="Стоимости"
+            description="Для новых тем"
+            key={formatCellValues(round.cell_values)}
+            defaultValue={formatCellValues(round.cell_values)}
+            onBlur={(e) => {
+              const v = parseCellValues(e.currentTarget.value);
+              if (v === null) return notifyError("Стоимости — целые числа через пробел");
+              if (formatCellValues(v) !== formatCellValues(round.cell_values)) patch({ cell_values: v });
+              else e.currentTarget.value = formatCellValues(v);
+            }}
           />
           <SimpleGrid cols={2}>
             <Select

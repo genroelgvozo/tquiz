@@ -3,11 +3,19 @@
  * a native dialog makes the browser drop fullscreen on the hall screen window
  * when the host runs both on one computer.
  */
-import { Button, Group, Radio, Stack, Text, TextInput } from "@mantine/core";
+import { Button, Group, Radio, Stack, Text, Textarea, TextInput } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { useState, type ReactNode } from "react";
 import type { RoundKind } from "../lib/types";
+import { parseCellValues } from "./cellValues";
 import { ROUND_KIND_LIST, ROUND_KINDS } from "./roundKinds";
+
+export interface NewRound {
+  kind: RoundKind;
+  title: string;
+  cell_values?: number[];
+  categories?: string[];
+}
 
 let seq = 0;
 const nextId = () => `tq-dialog-${++seq}`;
@@ -89,7 +97,7 @@ function PromptForm(props: {
 }
 
 /** Round kind picker plus title in one step; lists every kind from ROUND_KINDS. */
-export function newRoundDialog(): Promise<{ kind: RoundKind; title: string } | null> {
+export function newRoundDialog(): Promise<NewRound | null> {
   const modalId = nextId();
   return new Promise((resolve) => {
     modals.open({
@@ -111,12 +119,17 @@ export function newRoundDialog(): Promise<{ kind: RoundKind; title: string } | n
 }
 
 function NewRoundForm(props: {
-  onSubmit: (value: { kind: RoundKind; title: string }) => void;
+  onSubmit: (value: NewRound) => void;
   onCancel: () => void;
 }) {
   const [kind, setKind] = useState<RoundKind>(ROUND_KIND_LIST[0]);
   const [title, setTitle] = useState(ROUND_KINDS[ROUND_KIND_LIST[0]].title);
   const trimmed = title.trim();
+  const [valuesText, setValuesText] = useState("100 200 300 400 500");
+  const [themesText, setThemesText] = useState("");
+  const values = parseCellValues(valuesText);
+  const jeopardy = kind === "jeopardy";
+  const valid = !!trimmed && (!jeopardy || values !== null);
 
   const pickKind = (next: RoundKind) => {
     // keep a custom title, but follow the kind while the title is still a default one
@@ -128,7 +141,13 @@ function NewRoundForm(props: {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (trimmed) props.onSubmit({ kind, title: trimmed });
+        if (!valid) return;
+        if (jeopardy && values) {
+          const categories = themesText.split("\n").map((t) => t.trim()).filter(Boolean);
+          props.onSubmit({ kind, title: trimmed, cell_values: values, categories });
+        } else {
+          props.onSubmit({ kind, title: trimmed });
+        }
       }}
     >
       <Radio.Group value={kind} onChange={(v) => pickKind(v as RoundKind)} label="Тип тура" mb="md">
@@ -149,7 +168,24 @@ function NewRoundForm(props: {
         </Stack>
       </Radio.Group>
       <TextInput label="Название тура" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
-      <DialogButtons confirmLabel="Создать" disabled={!trimmed} onCancel={props.onCancel} />
+      {jeopardy && (
+        <Stack gap="sm" mt="md">
+          <TextInput
+            label="Стоимости"
+            value={valuesText}
+            onChange={(e) => setValuesText(e.currentTarget.value)}
+            error={values === null ? "Целые числа через пробел" : undefined}
+          />
+          <Textarea
+            label="Темы (по одной в строке)"
+            autosize
+            minRows={3}
+            value={themesText}
+            onChange={(e) => setThemesText(e.currentTarget.value)}
+          />
+        </Stack>
+      )}
+      <DialogButtons confirmLabel="Создать" disabled={!valid} onCancel={props.onCancel} />
     </form>
   );
 }

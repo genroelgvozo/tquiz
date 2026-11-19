@@ -98,13 +98,13 @@ export default function QuizEditor() {
   };
 
   const renameCategory = async (categoryId: number, current: string) => {
-    const name = await promptDialog({ title: "Переименовать категорию", label: "Название", initial: current });
+    const name = await promptDialog({ title: "Переименовать тему", label: "Название", initial: current });
     if (name !== null && name !== current) mutate("PATCH", `/api/categories/${categoryId}`, { name });
   };
 
   const deleteCategory = async (categoryId: number, name: string) => {
     const ok = await confirmDialog({
-      title: `Удалить категорию «${name}»?`,
+      title: `Удалить тему «${name}»?`,
       message: "Вместе с ней удалятся все её вопросы.",
       confirmLabel: "Удалить",
       danger: true,
@@ -113,7 +113,7 @@ export default function QuizEditor() {
   };
 
   const addCategory = async (roundId: number) => {
-    const name = await promptDialog({ title: "Новая категория", label: "Название", confirmLabel: "Добавить" });
+    const name = await promptDialog({ title: "Новая тема", label: "Название", confirmLabel: "Добавить" });
     if (name !== null) mutate("POST", `/api/rounds/${roundId}/categories`, { name });
   };
 
@@ -250,7 +250,7 @@ export default function QuizEditor() {
                                 <RowAction onClick={() => mutate("POST", `/api/categories/${c.id}/move`, { delta: 1 })}>
                                   ↓
                                 </RowAction>
-                                <RowAction title="Удалить категорию" onClick={() => deleteCategory(c.id, c.name)}>
+                                <RowAction title="Удалить тему" onClick={() => deleteCategory(c.id, c.name)}>
                                   ✕
                                 </RowAction>
                               </Group>
@@ -275,7 +275,7 @@ export default function QuizEditor() {
                               </Group>
                             </div>
                           ))}
-                          <AddButton onClick={() => addCategory(r.id)}>+ категория</AddButton>
+                          <AddButton onClick={() => addCategory(r.id)}>+ тема</AddButton>
                         </>
                       ) : (
                         <>
