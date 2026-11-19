@@ -40,11 +40,11 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
                   {c.name}
                 </div>
                 {rows[ci].map((q, i) => {
-                  if (!q) return <span key={i} />;
+                  if (!q) return <span key={`empty-${i}`} />;
                   const played = j.played.includes(q.id);
                   return (
                     <button
-                      key={q.id}
+                      key={`q-${q.id}`}
                       className={`${played ? "played" : ""} ${q.id === j.question_id ? "current" : ""}`}
                       disabled={played || !canOpen}
                       title={q.is_secret ? "секрет" : q.text}

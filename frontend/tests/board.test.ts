@@ -25,3 +25,17 @@ test("empty board", () => {
   assert.deepEqual(r.columns, []);
   assert.deepEqual(r.rows, [[], []]);
 });
+
+test("o-th question of a value goes to the o-th column of that value", () => {
+  const r = layoutBoard([
+    [{ value: 100, id: "a" }, { value: 100, id: "b" }],
+    [{ value: 100, id: "c" }],
+  ]);
+  assert.deepEqual(r.rows[0].map((x) => x?.id ?? null), ["a", "b"]);
+  assert.deepEqual(r.rows[1].map((x) => x?.id ?? null), ["c", null]);
+});
+test("gap and duplicates together", () => {
+  const r = layoutBoard([[c(100), c(100), c(200)], [c(200)]]);
+  assert.deepEqual(r.columns, [100, 100, 200]);
+  assert.deepEqual(vals(r.rows[1]), [null, null, 200]);
+});
