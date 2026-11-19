@@ -302,7 +302,7 @@ def create_category(round_id: int, body: CategoryCreate, request: Request, sessi
     rnd = _get(session, Round, round_id)
     _ensure_unlocked(request, rnd.quiz_id)
     if rnd.kind != "jeopardy":
-        raise HTTPException(422, "Категории есть только в своей игре")
+        raise HTTPException(422, "Темы есть только в своей игре")
     _add_category(session, rnd, body.name)
     session.commit()
     return _payload(session, request, rnd.quiz_id)
@@ -352,16 +352,16 @@ def create_question(round_id: int, body: QuestionCreate, request: Request, sessi
     _ensure_unlocked(request, rnd.quiz_id)
     if rnd.kind == "jeopardy":
         if body.category_id is None:
-            raise HTTPException(422, "Укажите категорию")
+            raise HTTPException(422, "Укажите тему")
         cat = _get(session, Category, body.category_id)
         if cat.round_id != round_id:
-            raise HTTPException(422, "Категория из другого тура")
+            raise HTTPException(422, "Тема из другого тура")
         existing = list(session.exec(select(Question.value).where(Question.category_id == cat.id)).all())
         pos = _next_position(session, Question, Question.category_id == cat.id)
         question = Question(round_id=round_id, category_id=cat.id, position=pos, value=next_cell_value(existing, rnd.cell_values))
     else:
         if body.category_id is not None:
-            raise HTTPException(422, "В туре со свободным вводом нет категорий")
+            raise HTTPException(422, "В туре со свободным вводом нет тем")
         pos = _next_position(session, Question, Question.round_id == round_id)
         question = Question(round_id=round_id, position=pos)
     session.add(question)

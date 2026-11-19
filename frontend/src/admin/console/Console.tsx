@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Qr } from "../../components/Qr";
 import { api } from "../../lib/api";
+import { leadersAndRanks } from "../../lib/standings";
 import { useSocket } from "../../lib/socket";
 import type { AdminCommand, AdminView, ServerMessage } from "../../lib/types";
 import { confirmDialog } from "../dialogs";
@@ -75,6 +76,15 @@ export default function Console() {
   const st = view.state;
   const round = st.round_index >= 0 ? view.quiz.rounds[st.round_index] : undefined;
   const hasNextRound = st.round_index + 1 < view.quiz.rounds.length;
+  // Unchecked answers and unfinished questions of the current round (for the "next round" / "finish" warnings).
+  const roundProgress = () => {
+    const unchecked = st.stage === "free" ? uncheckedCount(view) : 0;
+    const unfinished =
+      (st.stage === "free" && (st.free?.phase === "question" || unchecked > 0)) ||
+      (st.stage === "jeopardy" && round !== undefined && st.jeopardy !== null &&
+        st.jeopardy.played.length < round.categories.reduce((n, c) => n + c.questions.length, 0));
+    return { unchecked, unfinished };
+  };
   const inGame = st.stage === "intro" || st.stage === "jeopardy" || st.stage === "free";
 
   let panel: React.ReactNode = null;
@@ -108,14 +118,15 @@ export default function Console() {
       </Stack>
     );
   else if (st.stage === "finished") {
-    const winner = st.standings.rows[0];
+    const { leaders } = leadersAndRanks(st.standings);
+    const winners = st.standings.rows.filter((r) => leaders.includes(r.team_id));
     panel = (
       <Paper withBorder p="md">
         <SectionLabel>Игра окончена</SectionLabel>
         <Stack align="flex-start">
-          {winner && (
+          {winners.length > 0 && (
             <Title order={3}>
-              Победитель: {winner.name} ({winner.total})
+              {winners.length === 1 ? "Победитель" : "Победители"}: {winners.map((w) => w.name).join(", ")} ({winners[0].total})
             </Title>
           )}
           <Button onClick={closeGame}>Закрыть игру</Button>
@@ -155,11 +166,7 @@ export default function Console() {
           <Button
             variant="default"
             onClick={async () => {
-              const unchecked = st.stage === "free" ? uncheckedCount(view) : 0;
-              const unfinished =
-                (st.stage === "free" && (st.free?.phase === "question" || unchecked > 0)) ||
-                (st.stage === "jeopardy" && round !== undefined && st.jeopardy !== null &&
-                  st.jeopardy.played.length < round.categories.reduce((n, c) => n + c.questions.length, 0));
+              const { unchecked, unfinished } = roundProgress();
               const ok =
                 st.stage === "intro" ||
                 (await confirmDialog(
@@ -185,7 +192,21 @@ export default function Console() {
           <Button
             variant="default"
             onClick={async () => {
-              const ok = await confirmDialog({ title: "Завершить игру и показать победителя?", confirmLabel: "Завершить" });
+              const { unchecked, unfinished: unf } = roundProgress();
+              const unfinished = st.stage === "free" && unf;
+              const ok = await confirmDialog(
+                unfinished
+                  ? {
+                      title: "Тур не закончен",
+                      message:
+                        "Есть неразобранные ответы или несыгранные вопросы." +
+                        (unchecked > 0 ? ` Не проверено ответов: ${unchecked}.` : "") +
+                        " Завершить игру и показать победителя?",
+                      confirmLabel: "Завершить",
+                      danger: true,
+                    }
+                  : { title: "Завершить игру и показать победителя?", confirmLabel: "Завершить" },
+              );
               if (ok) send({ type: "finish_game" });
             }}
           >

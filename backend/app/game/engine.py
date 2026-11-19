@@ -184,6 +184,7 @@ def _start_game(game: Game, cmd: StartGame) -> None:
     game.state.stage = "intro"
     game.state.round_index = 0
     game.state.qr_visible = False
+    game.state.overlay = None
     game.state.undo_stack = []
 
 

@@ -65,6 +65,7 @@ def test_screen_view_answer_only_when_revealed():
         dumped = s.model_dump_json()
         assert (SECRET_ANS in dumped) == bool(revealed), step
         assert "correct_option" not in dumped and "ответ команды А" not in dumped
+        assert '"marks"' not in dumped
 
 
 def test_screen_secret_hides_text_until_recipient():

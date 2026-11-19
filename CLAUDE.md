@@ -48,6 +48,7 @@ ADMIN_PASSWORD=dev SECRET_KEY=dev-secret uv run uvicorn --factory app.main:creat
 cd frontend
 npm install
 npm run dev      # http://localhost:5173, проксирует /api, /media, /ws на бэк
+npm test         # тесты чистых функций (node:test)
 npm run build    # проверка типов + сборка в frontend/dist
 ```
 

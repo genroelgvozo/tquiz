@@ -126,6 +126,17 @@ def test_mark_rejected_for_stale_answer():
         g.apply_admin(Mark(question_id=1, team_id=b, correct=True, text="Сав"))
 
 
+def test_option_answer_mark_is_stale_after_option_change():
+    g, clock, a, b, c = setup()
+    g.apply_admin(OpenQuestion(index=1))
+    g.apply_team(b, SubmitAnswer(option=0))
+    g.apply_admin(Mark(question_id=2, team_id=b, correct=True, option=0))
+    with pytest.raises(GameError, match="изменился"):
+        g.apply_admin(Mark(question_id=2, team_id=b, correct=False, option=1))
+    g.apply_team(b, SubmitAnswer(option=2))
+    assert g.state.free.marks["2"][b] is False  # host mark dropped, auto-mark of the new option
+
+
 def test_mark_requires_opened_question_and_answer():
     g, clock, a, b, c = setup()
     g.apply_team(a, SubmitAnswer(text="x"))

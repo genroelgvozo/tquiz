@@ -7,7 +7,9 @@ type Marks = Record<string, Record<string, boolean | null>>;
 type Answers = Record<string, Record<string, { text: string; option: number | null; stake: boolean }>>;
 
 function view(free: { answers: Answers; marks: Marks; opened: number[] } | null): AdminView {
-  return { state: { free } } as unknown as AdminView;
+  const ids = new Set<string>();
+  for (const per of Object.values(free?.answers ?? {})) for (const id of Object.keys(per)) ids.add(id);
+  return { state: { free, teams: [...ids].map((id) => ({ id })) } } as unknown as AdminView;
 }
 const ans = (text: string) => ({ text, option: null, stake: false });
 
@@ -40,4 +42,14 @@ test("questions not opened are not counted", () => {
 
 test("returns 0 when free is null", () => {
   assert.equal(uncheckedCount(view(null)), 0);
+});
+
+test("answers of deleted teams are not counted", () => {
+  const v = {
+    state: {
+      teams: [{ id: "a" }],
+      free: { answers: { "1": { a: ans("x"), gone: ans("y") } }, marks: { "1": {} }, opened: [1] },
+    },
+  } as unknown as AdminView;
+  assert.equal(uncheckedCount(v), 1);
 });

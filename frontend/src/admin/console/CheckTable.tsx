@@ -47,7 +47,10 @@ export default function CheckTable({ view, send }: PanelProps) {
                         const waiting = current && free.timer.status !== "finished";
                         return (
                           <Table.Td key={t.id}>
-                            <Text c="dimmed">{waiting ? "ждём…" : "—"}</Text>
+                            <Group gap={6} wrap="nowrap">
+                              <Text c="dimmed">{waiting ? "ждём…" : "—"}</Text>
+                              {a?.stake && <Badge color="yellow">ставка</Badge>}
+                            </Group>
                           </Table.Td>
                         );
                       }

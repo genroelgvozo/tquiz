@@ -67,6 +67,13 @@ def test_next_round_shows_standings_overlay_only_after_a_closed_round():
     assert g.state.overlay is None
 
 
+def test_overlay_from_lobby_does_not_carry_into_round_one_intro():
+    g, a, b = setup()
+    g.apply_admin(SetOverlay(overlay="leaderboard"))
+    g.apply_admin(StartGame())
+    assert g.state.overlay is None
+
+
 def test_skipped_round_is_not_closed():
     g, a, b = setup()
     g.apply_admin(StartGame())

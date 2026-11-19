@@ -316,6 +316,7 @@
 .scr-standings {
   border-collapse: collapse;
   width: min(86vw, 1400px);
+  table-layout: fixed;
   font-size: 1.5em;
 }
 
@@ -334,9 +335,27 @@
 }
 
 .scr-standings th.round {
-  max-width: 11em;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.scr-standings th.round .clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.scr-standings th.round,
+.scr-standings td.round {
+  width: calc(62% / var(--rounds, 6));
+}
+
+.scr-standings th.total,
+.scr-standings td.total {
+  width: 4.5em;
 }
 
 .scr-standings .n {
@@ -346,7 +365,6 @@
 }
 
 .scr-standings .name {
-  width: 100%;
   text-align: left;
   max-width: 0;
   overflow: hidden;

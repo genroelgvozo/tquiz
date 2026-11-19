@@ -1,18 +1,19 @@
 import type { Standings } from "../../lib/types";
+import { leadersAndRanks } from "../../lib/standings";
 import StandingsTable from "./StandingsTable";
 
 export default function WinnerView({ standings }: { standings: Standings }) {
-  const first = standings.rows[0];
-  const winner = first && (first.total !== 0 || standings.columns.some((c) => c.closed)) ? first : undefined;
+  const { leaders } = leadersAndRanks(standings);
+  const names = standings.rows.filter((r) => leaders.includes(r.team_id)).map((r) => r.name);
   return (
     <div className="scr-winner">
-      {winner && (
+      {names.length > 0 && (
         <div className="scr-center" style={{ flex: "none", paddingBottom: 0 }}>
-          <div className="scr-h3 scr-muted">Победитель</div>
-          <div className="scr-h1 scr-accent">{winner.name}</div>
+          <div className="scr-h3 scr-muted">{names.length === 1 ? "Победитель" : "Победители"}</div>
+          <div className="scr-h1 scr-accent">{names.join(", ")}</div>
         </div>
       )}
-      <StandingsTable standings={standings} title="Итоговый рейтинг" highlightFirst={winner !== undefined} />
+      <StandingsTable standings={standings} title="Итоговый рейтинг" highlightLeaders={names.length > 0} />
     </div>
   );
 }

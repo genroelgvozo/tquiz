@@ -67,7 +67,10 @@ export default function RoundSettings({
             defaultValue={formatCellValues(round.cell_values)}
             onBlur={(e) => {
               const v = parseCellValues(e.currentTarget.value);
-              if (v === null) return notifyError("Стоимости — целые числа через пробел");
+              if (v === null) {
+                e.currentTarget.value = formatCellValues(round.cell_values);
+                return notifyError("Стоимости — целые числа через пробел");
+              }
               if (formatCellValues(v) !== formatCellValues(round.cell_values)) patch({ cell_values: v });
               else e.currentTarget.value = formatCellValues(v);
             }}
