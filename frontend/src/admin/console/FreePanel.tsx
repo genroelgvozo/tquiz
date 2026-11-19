@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Group, List, Paper, Stack, Text } from "@mantine/core";
+import { Box, Button, Group, List, Paper, Stack, Text } from "@mantine/core";
 import { PhaseTimerBar } from "../../components/PhaseTimerBar";
 import { useServerClock } from "../../lib/clock";
 import { confirmDialog } from "../dialogs";
@@ -12,7 +12,6 @@ export default function FreePanel({ view, send }: PanelProps) {
   if (!round || !free) return null;
   const q = round.questions[free.index];
   const total = round.questions.length;
-  const answers = free.answers[String(q.id)] ?? {};
   const t = free.timer;
 
   return (
@@ -92,19 +91,6 @@ export default function FreePanel({ view, send }: PanelProps) {
             </>
           )}
           {t.status === "finished" && <Text c="dimmed">Время вышло</Text>}
-        </Group>
-
-        <Group gap={6}>
-          {view.state.teams.map((team) => {
-            const a = answers[team.id];
-            const done = !!a && (a.text.trim() !== "" || a.option !== null);
-            return (
-              <Badge key={team.id} color={done ? "green" : "gray"}>
-                {done ? "✓ " : ""}
-                {team.name}
-              </Badge>
-            );
-          })}
         </Group>
       </Stack>
     </Paper>

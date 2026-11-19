@@ -9,6 +9,8 @@ import { confirmDialog } from "../dialogs";
 import { notifyApiError, notifyError } from "../notify";
 import { ROUND_KINDS } from "../roundKinds";
 import { SectionLabel } from "../ui";
+import { uncheckedCount } from "./check";
+import CheckTable from "./CheckTable";
 import "./console.css";
 import FreePanel from "./FreePanel";
 import JeopardyPanel from "./JeopardyPanel";
@@ -98,8 +100,13 @@ export default function Console() {
       </Paper>
     );
   else if (st.stage === "jeopardy") panel = <JeopardyPanel view={view} send={send} />;
-  else if (st.stage === "free" && st.free?.phase === "review") panel = <ReviewPanel view={view} send={send} />;
-  else if (st.stage === "free") panel = <FreePanel view={view} send={send} />;
+  else if (st.stage === "free")
+    panel = (
+      <Stack>
+        {st.free?.phase === "review" ? <ReviewPanel view={view} send={send} /> : <FreePanel view={view} send={send} />}
+        <CheckTable view={view} send={send} />
+      </Stack>
+    );
   else if (st.stage === "finished") {
     const winner = st.standings.rows[0];
     panel = (
@@ -148,8 +155,9 @@ export default function Console() {
           <Button
             variant="default"
             onClick={async () => {
+              const unchecked = st.stage === "free" ? uncheckedCount(view) : 0;
               const unfinished =
-                (st.stage === "free" && st.free?.phase === "question") ||
+                (st.stage === "free" && (st.free?.phase === "question" || unchecked > 0)) ||
                 (st.stage === "jeopardy" && round !== undefined && st.jeopardy !== null &&
                   st.jeopardy.played.length < round.categories.reduce((n, c) => n + c.questions.length, 0));
               const ok =
@@ -158,7 +166,10 @@ export default function Console() {
                   unfinished
                     ? {
                         title: "Тур не закончен",
-                        message: "Есть неразобранные ответы или несыгранные вопросы. Перейти к следующему туру? Вернуться будет нельзя.",
+                        message:
+                          "Есть неразобранные ответы или несыгранные вопросы." +
+                          (unchecked > 0 ? ` Не проверено ответов: ${unchecked}.` : "") +
+                          " Перейти к следующему туру? Вернуться будет нельзя.",
                         confirmLabel: "Перейти",
                         danger: true,
                       }
