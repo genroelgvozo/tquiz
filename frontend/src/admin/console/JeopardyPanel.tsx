@@ -1,5 +1,6 @@
 import { Alert, Box, Button, Grid, Group, Paper, Select, Stack, Text } from "@mantine/core";
 import type { QuestionData } from "../../lib/types";
+import { layoutBoard } from "../../lib/board";
 import { SectionLabel } from "../ui";
 import { AudioControls, QuestionBox } from "./common";
 import type { PanelProps } from "./types";
@@ -10,7 +11,8 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
   if (!round || !j) return null;
   const teams = view.state.teams;
   const name = (id: string | null) => teams.find((t) => t.id === id)?.name ?? "—";
-  const columns = Math.max(1, ...round.categories.map((c) => c.questions.length));
+  const { columns, rows } = layoutBoard(round.categories.map((c) => c.questions));
+  const colCount = Math.max(1, columns.length);
 
   let current: QuestionData | undefined;
   let currentCat = "";
@@ -31,14 +33,13 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
         <Grid.Col span={{ base: 12, sm: 5 }}>
           <SectionLabel>Сетка — клик открывает вопрос</SectionLabel>
           {/* own layout: Mantine has no compact board of cells */}
-          <div className="mini-grid" style={{ gridTemplateColumns: `1.3fr repeat(${columns}, 1fr)` }}>
-            {round.categories.map((c) => (
+          <div className="mini-grid" style={{ gridTemplateColumns: `1.3fr repeat(${colCount}, 1fr)` }}>
+            {round.categories.map((c, ci) => (
               <div key={c.id} style={{ display: "contents" }}>
                 <div className="cat" title={c.name}>
                   {c.name}
                 </div>
-                {Array.from({ length: columns }, (_, i) => {
-                  const q = c.questions[i];
+                {rows[ci].map((q, i) => {
                   if (!q) return <span key={i} />;
                   const played = j.played.includes(q.id);
                   return (
