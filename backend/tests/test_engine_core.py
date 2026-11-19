@@ -3,6 +3,7 @@ import pytest
 from app.game.commands import *  # noqa: F403
 from app.game.engine import GameError
 from app.game import scoring
+from app.game.state import GameState
 from tests.factories import FakeClock, free_round, make_quiz, new_game, q
 
 
@@ -123,4 +124,21 @@ def test_state_roundtrips_json():
     g = game2()
     g.join("А")
     g.apply_admin(StartGame())
+    assert GameState.model_validate_json(g.state.model_dump_json()) == g.state
+
+
+def test_free_state_with_marks_roundtrips_json():
+    g = game2()
+    a = g.join("А").team_id
+    g.join("Б")
+    g.apply_admin(StartGame())
+    g.apply_admin(StartRound())
+    g.apply_team(a, SubmitAnswer(text="ответ"))
+    g.apply_admin(Mark(question_id=11, team_id=a, correct=True, text="ответ"))
+    g.apply_admin(StartReview())
+    g.apply_admin(NextRound())
+    g.apply_admin(StartRound())
+    g.apply_team(a, SubmitAnswer(text="ещё"))
+    g.apply_admin(StartReview())
+    assert g.state.free.revealed and g.state.free.opened
     assert GameState.model_validate_json(g.state.model_dump_json()) == g.state

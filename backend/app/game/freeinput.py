@@ -111,6 +111,8 @@ def _open(game: "Game", index: int) -> None:
     question = rnd.questions[index]
     free.index = index
     free.timer = _timer_for(rnd, question)
+    if question.id not in free.opened:
+        free.opened.append(question.id)
     game.audio_for(question)
 
 
@@ -196,17 +198,9 @@ def _enter_review(game: "Game", index: int) -> None:
         raise GameError("Нет такого вопроса")
     free = game.state.free
     free.review_index = index
-    question = rnd.questions[index]
-    if question.id in free.reviewed:
-        return
-    key = str(question.id)
-    answers = free.answers.get(key, {})
-    marks = free.marks.setdefault(key, {})
-    for team in game.state.teams:
-        answer = answers.get(team.id)
-        mark = premark(question, answer)
-        marks[team.id] = mark
-    free.reviewed.append(question.id)
+    question_id = rnd.questions[index].id
+    if question_id not in free.revealed:
+        free.revealed.append(question_id)
 
 
 def _start_review(game: "Game", cmd: StartReview) -> None:
@@ -226,13 +220,17 @@ def _review_goto(game: "Game", cmd: ReviewGoto) -> None:
 
 def _mark(game: "Game", cmd: Mark) -> None:
     free = _free(game)
-    if cmd.question_id not in free.reviewed:
-        raise GameError("Сначала откройте вопрос в разборе")
-    game.current_round().find_question(cmd.question_id)
+    in_round = any(q.id == cmd.question_id for q in game.current_round().questions)
+    if not in_round or cmd.question_id not in free.opened:
+        raise GameError("Этот вопрос ещё не открывали")
     game.team(cmd.team_id)
     key = str(cmd.question_id)
-    marks = free.marks.setdefault(key, {})
-    marks[cmd.team_id] = cmd.correct
+    answer = free.answers.get(key, {}).get(cmd.team_id)
+    if answer is None:
+        raise GameError("У команды нет ответа")
+    if (answer.text, answer.option) != (cmd.text, cmd.option):
+        raise GameError("Ответ команды изменился — проверьте заново")
+    free.marks.setdefault(key, {})[cmd.team_id] = cmd.correct
 
 
 # ---------- team handlers ----------
@@ -251,7 +249,12 @@ def _submit(game: "Game", team_id: str, cmd: SubmitAnswer) -> None:
         answer = Answer(option=cmd.option, stake=cmd.stake and rnd.stakes)
     else:
         answer = Answer(text=cmd.text[:ANSWER_MAX_LEN], stake=cmd.stake and rnd.stakes)
-    game.state.free.answers.setdefault(str(question.id), {})[team_id] = answer
+    key = str(question.id)
+    team_answers = game.state.free.answers.setdefault(key, {})
+    previous = team_answers.get(team_id)
+    team_answers[team_id] = answer
+    if previous is None or (previous.text, previous.option) != (answer.text, answer.option):
+        game.state.free.marks.setdefault(key, {})[team_id] = premark(question, answer)
 
 
 HANDLERS: dict = {

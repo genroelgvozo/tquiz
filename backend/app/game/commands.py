@@ -151,6 +151,9 @@ class Mark(_Cmd):
     question_id: int
     team_id: str
     correct: bool | None
+    # the answer the host was looking at when marking
+    text: str = ""
+    option: int | None = None
 
 
 # ---------- team ----------

@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from app.game import freeinput
@@ -93,21 +95,64 @@ def test_stake_ignored_when_round_has_no_stakes():
     assert g.state.free.answers["1"][a].stake is False
 
 
-def test_review_premarks_without_points():
-    g, clock, a, b, c = setup(stakes=True)
+def test_premark_on_submit():
+    g, clock, a, b, c = setup()
     g.apply_team(a, SubmitAnswer(text="грачи прилетели!"))
-    g.apply_team(b, SubmitAnswer(text="Саврасов", stake=True))
-    g.apply_admin(OpenQuestion(index=1))
-    g.apply_team(a, SubmitAnswer(option=1, stake=True))
-    g.apply_team(b, SubmitAnswer(option=0))
-    g.apply_admin(StartReview())
-    assert g.state.free.marks["1"] == {a: True, b: None, c: False}
+    g.apply_team(b, SubmitAnswer(text="Саврасов"))
+    assert g.state.free.marks["1"] == {a: True, b: None}
     assert g.team(a).round_scores == {}
-    g.apply_admin(Mark(question_id=1, team_id=b, correct=False))
+
+
+def test_host_mark_survives_same_answer_and_stake_toggle():
+    g, clock, a, b, c = setup(stakes=True)
+    g.apply_team(b, SubmitAnswer(text="Саврасов"))
+    g.apply_admin(Mark(question_id=1, team_id=b, correct=True, text="Саврасов"))
+    g.apply_team(b, SubmitAnswer(text="Саврасов", stake=True))
+    assert g.state.free.marks["1"][b] is True
+
+
+def test_changed_answer_resets_host_mark():
+    g, clock, a, b, c = setup()
+    g.apply_team(b, SubmitAnswer(text="Саврасов"))
+    g.apply_admin(Mark(question_id=1, team_id=b, correct=True, text="Саврасов"))
+    g.apply_team(b, SubmitAnswer(text="Левитан"))
+    assert g.state.free.marks["1"][b] is None
+
+
+def test_mark_rejected_for_stale_answer():
+    g, clock, a, b, c = setup()
+    g.apply_team(b, SubmitAnswer(text="Саврасов"))
+    with pytest.raises(GameError, match="изменился"):
+        g.apply_admin(Mark(question_id=1, team_id=b, correct=True, text="Сав"))
+
+
+def test_mark_requires_opened_question_and_answer():
+    g, clock, a, b, c = setup()
+    g.apply_team(a, SubmitAnswer(text="x"))
+    with pytest.raises(GameError, match="не открывали"):
+        g.apply_admin(Mark(question_id=2, team_id=a, correct=True))
+    with pytest.raises(GameError, match="нет ответа"):
+        g.apply_admin(Mark(question_id=1, team_id=c, correct=True))
+
+
+def test_mark_allowed_while_timer_runs():
+    g, clock, a, b, c = setup()
+    g.apply_admin(TimerStart())
+    g.apply_team(b, SubmitAnswer(text="Саврасов"))
+    g.apply_admin(Mark(question_id=1, team_id=b, correct=False, text="Саврасов"))
     assert g.state.free.marks["1"][b] is False
+
+
+def test_review_only_moves_screen():
+    g, clock, a, b, c = setup()
+    g.apply_team(b, SubmitAnswer(text="Саврасов"))
+    g.apply_admin(OpenQuestion(index=1))
+    marks_before = copy.deepcopy(g.state.free.marks)
+    g.apply_admin(StartReview())
     g.apply_admin(ReviewGoto(index=1))
-    assert g.state.free.marks["2"] == {a: True, b: False, c: False}
-    assert all(g.team(t).round_scores == {} for t in (a, b, c))
+    assert g.state.free.marks == marks_before and g.state.free.revealed == [1, 2]
+    g.apply_admin(Mark(question_id=1, team_id=b, correct=True, text="Саврасов"))
+    assert g.state.free.marks["1"][b] is True
 
 
 def test_round_points_count_stakes_and_marks():
@@ -118,16 +163,16 @@ def test_round_points_count_stakes_and_marks():
     g.apply_team(a, SubmitAnswer(option=1, stake=True))
     g.apply_admin(StartReview())
     g.apply_admin(ReviewGoto(index=1))
-    g.apply_admin(Mark(question_id=1, team_id=b, correct=False))
+    g.apply_admin(Mark(question_id=1, team_id=b, correct=False, text="Саврасов"))
     assert freeinput.round_points(g) == {a: 3, b: -1, c: 0}
     assert round_score(g, a) == 3
 
 
-def test_stake_without_answer_is_wrong():
+def test_stake_with_empty_answer_counts_minus_nominal():
     g, clock, a, *_ = setup(stakes=True)
     g.apply_team(a, SubmitAnswer(text="", stake=True))
-    g.apply_admin(StartReview())
     assert g.state.free.marks["1"][a] is False and freeinput.round_points(g)[a] == -1
+    assert round_score(g, a) == -1
 
 
 def test_changing_mark_changes_round_points_and_revisit_does_not_double():
@@ -137,15 +182,8 @@ def test_changing_mark_changes_round_points_and_revisit_does_not_double():
     g.apply_admin(ReviewGoto(index=1))
     g.apply_admin(ReviewGoto(index=0))
     assert freeinput.round_points(g)[a] == 1
-    g.apply_admin(Mark(question_id=1, team_id=a, correct=False))
+    g.apply_admin(Mark(question_id=1, team_id=a, correct=False, text="Грачи прилетели"))
     assert freeinput.round_points(g)[a] == 0
-
-
-def test_mark_requires_reviewed_question():
-    g, clock, a, *_ = setup()
-    g.apply_admin(StartReview())
-    with pytest.raises(GameError):
-        g.apply_admin(Mark(question_id=2, team_id=a, correct=True))
 
 
 def test_open_question_with_audio_plays_it():

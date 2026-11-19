@@ -66,7 +66,9 @@ class FreeState(BaseModel):
     answers: dict[str, dict[str, Answer]] = Field(default_factory=dict)
     review_index: int = 0
     marks: dict[str, dict[str, bool | None]] = Field(default_factory=dict)
-    reviewed: list[int] = Field(default_factory=list)
+    # ids of questions that were opened / whose answer was shown on the screen
+    opened: list[int] = Field(default_factory=list)
+    revealed: list[int] = Field(default_factory=list)
 
 
 class AudioCmd(BaseModel):

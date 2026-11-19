@@ -32,7 +32,8 @@ def scripted_states():
         StartGame(), StartRound(), OpenCell(question_id=1), ("team", a, BuzzCmd()), Judge(correct=False),
         ("team", b, BuzzCmd()), Judge(correct=True), ToBoard(), OpenCell(question_id=2),
         SetSecretRecipient(team_id=a), Judge(correct=True), NextRound(), StartRound(),
-        ("team", a, SubmitAnswer(text="ответ команды А", stake=True)), TimerStart(),
+        ("team", a, SubmitAnswer(text="ответ команды А", stake=True)),
+        Mark(question_id=3, team_id=a, correct=True, text="ответ команды А"), TimerStart(),
         OpenQuestion(index=1), ("team", b, SubmitAnswer(option=1)), StartReview(), ReviewGoto(index=1), FinishGame(),
     ]
     yield g, None
@@ -49,6 +50,7 @@ def test_team_view_never_leaks():
         for t in g.state.teams:
             s = team_view(g, t.id).model_dump_json()
             assert SECRET_ANS not in s and "/media/" not in s and "correct_option" not in s and t.token not in s
+            assert "marks" not in s
             other = [x for x in g.state.teams if x.id != t.id][0]
             assert other.token not in s
     for g, _ in scripted_states():
