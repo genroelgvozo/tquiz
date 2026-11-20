@@ -45,7 +45,7 @@
 }
 
 .scr-muted {
-  color: var(--dark-muted);
+  color: var(--muted);
 }
 
 .scr-accent {
@@ -99,7 +99,7 @@
 }
 
 .scr-cell {
-  background: var(--dark-surface);
+  background: var(--surface);
   border-radius: 0.4em;
   padding: 1.4vh 0.5vw;
   text-align: center;
@@ -108,7 +108,7 @@
 .scr-cat {
   text-align: left;
   padding-left: 1vw;
-  color: #c8c8cc;
+  color: var(--text);
   background: transparent;
 }
 
@@ -120,7 +120,7 @@
 .scr-played,
 .scr-empty {
   background: transparent;
-  color: #2c2c30;
+  color: var(--line);
 }
 
 .scr-scores {
@@ -128,12 +128,12 @@
   justify-content: space-around;
   gap: 2vw;
   flex-wrap: wrap;
-  color: #ccc;
+  color: var(--text);
   font-size: 1.1em;
 }
 
 .scr-scores b {
-  color: #fff;
+  color: var(--text);
   margin-left: 0.3em;
 }
 
@@ -155,7 +155,7 @@
   position: absolute;
   top: 3.5vh;
   right: 4vw;
-  color: var(--dark-muted);
+  color: var(--muted);
   font-size: 0.9em;
 }
 
@@ -170,7 +170,7 @@
 }
 
 .scr-q-text.dim {
-  color: #8d8d92;
+  color: var(--muted);
   font-size: 1.4em;
 }
 
@@ -189,7 +189,7 @@
 
 .scr-q-audio {
   font-size: 4em;
-  color: var(--dark-muted);
+  color: var(--muted);
 }
 
 .scr-options {
@@ -214,7 +214,7 @@
 .scr-who {
   align-self: flex-end;
   background: var(--accent);
-  color: var(--dark-bg);
+  color: var(--on-accent);
   padding: 0.5em 1em;
   border-radius: 0.4em;
   font-weight: 700;
@@ -234,11 +234,11 @@
   display: flex;
   gap: 1em;
   padding: 1.2vh 0;
-  border-bottom: 1px solid var(--dark-surface-2);
+  border-bottom: 1px solid var(--line);
 }
 
 .scr-rank .n {
-  color: var(--dark-muted);
+  color: var(--muted);
   width: 1.5em;
 }
 
@@ -260,7 +260,7 @@
 .scr-overlay {
   position: absolute;
   inset: 0;
-  background: rgb(18 18 20);
+  background: var(--bg);
   display: flex;
   padding: 4vh 4vw;
 }
@@ -276,7 +276,7 @@
   bottom: 1vh;
   left: 50%;
   transform: translateX(-50%);
-  color: var(--red);
+  color: var(--danger);
   font-size: 0.7em;
 }
 
@@ -286,18 +286,18 @@
   top: 1vh;
   background: transparent;
   border: none;
-  color: #444;
+  color: var(--line);
   font-size: 1.2em;
 }
 
 .scr-fs-btn:hover {
-  color: #aaa;
+  color: var(--muted);
 }
 
 .scr-gate {
   position: absolute;
   inset: 0;
-  background: rgb(18 18 20 / 0.92);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -305,7 +305,7 @@
 
 .scr-gate-btn {
   background: var(--accent);
-  color: var(--dark-bg);
+  color: var(--on-accent);
   border: none;
   border-radius: 0.5em;
   padding: 1em 2em;
@@ -326,7 +326,7 @@
   /* narrow side padding: with 6 rounds a 4-digit score must still fit its column at 1920px,
      otherwise the overflowing number loses its right alignment */
   padding: 1.2vh 0.35em;
-  border-bottom: 1px solid var(--dark-surface-2);
+  border-bottom: 1px solid var(--line);
   text-align: right;
   white-space: nowrap;
 }
@@ -334,7 +334,7 @@
 /* th keeps the table's font size so em-based padding and column widths match the body cells;
    only the label inside is smaller */
 .scr-standings th {
-  color: var(--dark-muted);
+  color: var(--muted);
   font-weight: 400;
 }
 
@@ -366,7 +366,7 @@
 }
 
 .scr-standings .n {
-  color: var(--dark-muted);
+  color: var(--muted);
   width: 1.5em;
   text-align: left;
 }
@@ -379,7 +379,7 @@
 }
 
 .scr-standings .round {
-  color: var(--dark-muted);
+  color: var(--muted);
 }
 
 .scr-standings tr.first b {

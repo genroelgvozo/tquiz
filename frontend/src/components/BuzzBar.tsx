@@ -1,6 +1,6 @@
 import { useTicker } from "../lib/clock";
 
-/** White bar filling up until the buzzers open. */
+/** Bar filling up until the buzzers open. */
 export function BuzzBar({ endsAt, seconds, now }: { endsAt: number; seconds: number; now: () => number }) {
   useTicker(50);
   const left = Math.max(0, endsAt - now());

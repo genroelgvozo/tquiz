@@ -5,6 +5,7 @@ import { PhaseTimerBar } from "../components/PhaseTimerBar";
 import { Qr } from "../components/Qr";
 import { api } from "../lib/api";
 import { useServerClock } from "../lib/clock";
+import { DEFAULT_THEME, themeVars } from "../lib/theme";
 import { useSocket } from "../lib/socket";
 import type { ScreenView, ServerMessage } from "../lib/types";
 import "./screen.css";
@@ -47,6 +48,7 @@ export default function ScreenApp() {
   }, []);
   const { status } = useSocket<ScreenView>(ready ? "/ws/screen" : null, onMessage);
   const now = useServerClock(view?.now);
+  const style = themeVars(view?.theme ?? DEFAULT_THEME) as React.CSSProperties;
   const unlockAudio = useScreenAudio(view, unlocked);
   useBuzzBeep(view?.jeopardy?.answering_team_id, beepCtx);
 
@@ -65,7 +67,7 @@ export default function ScreenApp() {
   };
 
   if (status === "unauthorized") {
-    return <div className="dark scr-root center-message">Откройте экран по ссылке из админки</div>;
+    return <div className="hall scr-root center-message" style={style}>Откройте экран по ссылке из админки</div>;
   }
 
   let content: React.ReactNode = <div className="scr-center scr-h1">{view?.quiz_title ?? "TQuiz"}</div>;
@@ -111,7 +113,7 @@ export default function ScreenApp() {
   }
 
   return (
-    <div className="dark scr-root">
+    <div className="hall scr-root" style={style}>
       <div className="scr-logo">
         <Logo url={view?.logo_url ?? null} />
       </div>

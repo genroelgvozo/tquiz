@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useServerClock } from "../lib/clock";
 import { useSocket } from "../lib/socket";
-import type { ServerMessage, TeamView } from "../lib/types";
+import { DEFAULT_THEME, themeVars } from "../lib/theme";
+import type { ServerMessage, TeamView, Theme } from "../lib/types";
 import BuzzerView from "./BuzzerView";
 import FreeInputView from "./FreeInputView";
 import JoinView from "./JoinView";
@@ -15,21 +16,25 @@ export default function PlayApp() {
   const [mode, setMode] = useState<Mode>("connecting");
   const [view, setView] = useState<TeamView | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
 
   const onMessage = useCallback((m: ServerMessage<TeamView>) => {
     switch (m.type) {
       case "state":
         if (m.view) {
           setView(m.view);
+          setTheme(m.view.theme);
           setMode("playing");
           setMessage(null);
         }
         break;
       case "no_game":
+        setTheme(DEFAULT_THEME);
         setMode("no_game");
         break;
       case "need_join":
         saveToken("");
+        setTheme(m.theme ?? DEFAULT_THEME);
         setMode((prev) => (prev === "kicked" ? prev : "need_join"));
         break;
       case "joined":
@@ -58,6 +63,11 @@ export default function PlayApp() {
   const path = mode === "kicked" ? null : token ? `/ws/team?token=${encodeURIComponent(token)}` : "/ws/team";
   const { send, status } = useSocket<TeamView>(path, onMessage);
   const now = useServerClock(view?.now);
+
+  // iOS overscroll shows the body behind the page
+  useEffect(() => {
+    document.body.style.background = theme.bg;
+  }, [theme.bg]);
 
   const header = view && mode === "playing" && (
     <header className="play-header">
@@ -130,7 +140,7 @@ export default function PlayApp() {
   }
 
   return (
-    <div className="dark play">
+    <div className="hall play" style={themeVars(theme) as React.CSSProperties}>
       {header}
       {status !== "open" && mode !== "kicked" && mode !== "connecting" && (
         <div className="play-offline">Нет связи, переподключаемся…</div>

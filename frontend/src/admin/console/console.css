@@ -43,7 +43,7 @@
   color: var(--mantine-color-white);
 }
 
-/* PhaseTimerBar is shared with the dark hall screen; recolour its muted texts for the light admin */
+/* PhaseTimerBar is shared with the hall screen; recolour its muted texts for the light admin */
 .light-timer .phase-timer-hint,
 .light-timer .phase-timer.status-finished .phase-timer-label,
 .light-timer .phase-timer.status-paused .phase-timer-label {

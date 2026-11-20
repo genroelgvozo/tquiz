@@ -10,13 +10,13 @@
   display: flex;
   justify-content: space-between;
   padding: 12px 16px;
-  color: var(--dark-muted);
+  color: var(--muted);
   font-size: 14px;
-  border-bottom: 1px solid var(--dark-surface-2);
+  border-bottom: 1px solid var(--line);
 }
 
 .play-team {
-  color: var(--dark-text);
+  color: var(--text);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -30,7 +30,7 @@
 }
 
 .play-offline {
-  background: var(--red);
+  background: var(--danger);
   color: #fff;
   text-align: center;
   font-size: 13px;
@@ -67,33 +67,33 @@
 }
 
 .play-muted {
-  color: var(--dark-muted);
+  color: var(--muted);
   font-size: 15px;
 }
 
 .play-caption {
-  color: var(--dark-muted);
+  color: var(--muted);
   font-size: 15px;
   min-height: 1.4em;
   text-align: center;
 }
 
 .play-caption.accent {
-  color: var(--accent);
+  color: var(--buzz-me);
   font-weight: 700;
   font-size: 20px;
 }
 
 .play-error {
-  color: #ff8a8a;
+  color: var(--danger);
   font-size: 14px;
 }
 
 .play-input,
 .play-textarea {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
-  color: var(--dark-text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
   border-radius: 10px;
   padding: 12px;
   font-size: 17px;
@@ -117,7 +117,7 @@
 
 .play-btn {
   background: var(--accent);
-  color: var(--dark-bg);
+  color: var(--on-accent);
   border: none;
   border-radius: 10px;
   padding: 13px;
@@ -126,8 +126,8 @@
 }
 
 .play-btn:disabled {
-  background: var(--dark-surface-2);
-  color: var(--dark-muted);
+  background: var(--line);
+  color: var(--muted);
 }
 
 .buzzer {
@@ -139,8 +139,8 @@
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  background: var(--dark-surface-2);
-  color: var(--dark-muted);
+  background: var(--line);
+  color: var(--muted);
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
@@ -148,9 +148,9 @@
 }
 
 .buzzer.active {
-  background: var(--red);
+  background: var(--buzz-go);
   color: #fff;
-  box-shadow: 0 0 0 10px #3a1517;
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--buzz-go) 25%, transparent);
 }
 
 .buzzer.active:active {
@@ -158,8 +158,8 @@
 }
 
 .buzzer.me {
-  background: var(--accent);
-  color: var(--dark-bg);
+  background: var(--buzz-me);
+  color: #fff;
 }
 
 .play-free {
@@ -179,9 +179,9 @@
 }
 
 .play-option {
-  background: var(--dark-surface);
-  border: 1px solid var(--dark-border);
-  color: var(--dark-text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
   border-radius: 10px;
   padding: 14px;
   text-align: left;
@@ -201,7 +201,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #ccc;
+  color: var(--text);
 }
 
 .play-toggle input {
@@ -212,7 +212,7 @@
   width: 44px;
   height: 26px;
   border-radius: 13px;
-  background: var(--dark-surface-2);
+  background: var(--line);
   position: relative;
   flex: none;
 }
@@ -225,7 +225,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #888;
+  background: var(--muted);
   transition: left 0.15s;
 }
 
@@ -235,7 +235,7 @@
 
 .play-toggle.on .switch::after {
   left: 21px;
-  background: var(--dark-bg);
+  background: var(--bg);
 }
 
 .play-toast {
@@ -243,8 +243,8 @@
   left: 16px;
   right: 16px;
   bottom: calc(16px + env(safe-area-inset-bottom));
-  background: var(--dark-surface-2);
-  border: 1px solid var(--dark-border);
+  background: var(--line);
+  border: 1px solid var(--line);
   padding: 10px 14px;
   border-radius: 10px;
   text-align: center;
@@ -255,6 +255,6 @@
   display: block;
   font-size: 11px;
   font-weight: 400;
-  color: var(--dark-muted);
+  color: var(--muted);
   text-align: right;
 }

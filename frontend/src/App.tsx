@@ -1,10 +1,10 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import PlayApp from "./play/PlayApp";
-import ScreenApp from "./screen/ScreenApp";
 
-// separate chunk: the admin pulls in Mantine, phones and the hall screen should not download it
+// separate chunks: the admin pulls in Mantine, phones should not download it nor the hall screen
 const AdminApp = lazy(() => import("./admin/AdminApp"));
+const ScreenApp = lazy(() => import("./screen/ScreenApp"));
 
 export default function App() {
   return (
@@ -17,7 +17,12 @@ export default function App() {
           </Suspense>
         }
       />
-      <Route path="/screen" element={<ScreenApp />} />
+      <Route path="/screen" element={
+          <Suspense fallback={null}>
+            <ScreenApp />
+          </Suspense>
+        }
+      />
       <Route path="/play" element={<PlayApp />} />
       <Route path="*" element={<Navigate to="/play" replace />} />
     </Routes>
