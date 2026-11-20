@@ -1,0 +1,223 @@
+<style>
+  .proto { --bg: #FBF5EA; --surface: #FFFFFF; --text: #2B2420; --muted: #8A7D70; --accent: #E2552F; --on-accent: #FFFFFF;
+    --accent-dim: #F7D9CC; --shadow: rgb(43 36 32 / 0.08); --line: #E8DCC8; }
+  .stage { position: relative; width: min(100%, 980px); aspect-ratio: 16 / 9; margin: 0 auto; background: var(--bg); color: var(--text);
+    border-radius: 10px; overflow: hidden; container-type: inline-size; box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .stage .deco { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .stage .logo { position: absolute; top: 2.5cqw; left: 2.5cqw; width: 5.5cqw; height: 5.5cqw; border-radius: 50%; background: var(--accent);
+    color: var(--on-accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 2.4cqw; z-index: 4; }
+  .layer { position: absolute; inset: 0; z-index: 1; padding: 3cqw 5cqw 3.5cqw 10cqw; display: flex; flex-direction: column; }
+  .qhead { font-size: 3.4cqw; line-height: 5.5cqw; min-height: 5.5cqw; white-space: nowrap; }
+  .qhead strong { color: var(--accent); font-weight: 850; }
+  .body { flex: 1; display: flex; flex-direction: column; min-height: 0; margin-left: -5cqw; }
+  .qtext { margin-top: 3cqw; font-size: 3.6cqw; font-weight: 650; line-height: 1.3; max-width: 88%; transform-origin: left top; }
+  .qtext .rest { color: transparent; }
+  .qtext .caret { display: inline-block; width: 0.08em; height: 1em; margin: 0 -0.04em; background: var(--accent); vertical-align: -0.12em;
+    animation: blink 0.9s steps(1) infinite; }
+  .qtext.frozen .caret { animation: none; opacity: 1; }
+  .qtext.done .caret { display: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .answer { margin-top: 3cqw; font-size: 3.4cqw; font-weight: 700; transform-origin: left center; align-self: flex-start; }
+  .answer span { color: var(--accent); }
+  .foot { margin-top: auto; display: flex; justify-content: flex-end; min-height: 6cqw; align-items: flex-end; }
+  .who { background: var(--accent); color: var(--on-accent); padding: 0.6cqw 1.6cqw; border-radius: 0.8cqw; font-weight: 800; font-size: 2.6cqw; }
+  .board { margin-top: 3.5cqw; display: grid; grid-template-columns: 1.7fr repeat(4, 1fr); gap: 0.9cqw; font-size: 2.6cqw; }
+  .cell { background: var(--surface); border-radius: 0.9cqw; padding: 1.7cqw 0.5cqw; text-align: center; color: var(--accent);
+    font-weight: 800; box-shadow: 0 0.35cqw 0 var(--shadow); }
+  .cell.cat { text-align: left; color: var(--text); background: transparent; box-shadow: none; font-weight: 600; padding-left: 0; }
+  .cell.played { background: transparent; box-shadow: none; color: transparent; outline: 0.2cqw dashed var(--line); outline-offset: -0.2cqw; }
+  .scores { margin-top: auto; display: flex; justify-content: space-around; font-size: 2.3cqw; color: var(--muted); }
+  .scores b { color: var(--text); margin-left: 0.3em; } .scores .ch, .scores .ch b { color: var(--accent); }
+  .zoom { position: absolute; z-index: 3; display: flex; align-items: center; justify-content: center; color: var(--on-accent);
+    font-weight: 800; font-size: 2.6cqw; overflow: hidden; }
+
+  .controls { width: min(100%, 980px); margin: 1rem auto 0; display: grid; gap: 0.6rem; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  .row .lbl { width: 9.5rem; color: var(--text-secondary); font-size: 0.85rem; }
+  .row button { padding: 0.45rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-secondary);
+    color: var(--text-primary); font: inherit; font-size: 0.9rem; cursor: pointer; }
+  .row button:hover { border-color: #E2552F; }
+  .row input[type=range] { width: 260px; accent-color: #E2552F; }
+  .row .val { font-variant-numeric: tabular-nums; min-width: 15rem; font-size: 0.9rem; }
+  .note { width: min(100%, 980px); margin: 0.8rem auto 0; color: var(--text-secondary); font-size: 0.85rem; }
+</style>
+
+<h2>Своя игра: вопрос печатается по буквам</h2>
+<p class="subtitle">
+  Режим кнопки «сразу»: кнопки открыты с первой буквы. Кто нажал, тот останавливает печать: остаток вопроса не появляется,
+  отвечать приходится по тому, что успели увидеть. После «✗ неверно» кнопки снова открываются у остальных, и печать продолжается
+  с того же места. «✓ верно» или «Показать ответ» допечатывают вопрос целиком и показывают ответ.
+  Подвигай скорость и найди комфортный темп.
+</p>
+
+<div class="proto">
+  <div class="stage" id="stage">
+    <svg class="deco" viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice">
+      <circle cx="160" cy="-2" r="20" fill="#F7D9CC"/>
+      <circle cx="-3" cy="93" r="13" fill="#D3E6EF"/>
+      <rect x="147" y="28" width="4" height="1.4" rx="0.7" fill="#E2552F" transform="rotate(30 149 28.7)"/>
+      <circle cx="153" cy="40" r="1.1" fill="#F2B705"/>
+      <rect x="4" y="14" width="3.5" height="1.3" rx="0.6" fill="#F2B705" transform="rotate(-25 5.7 14.6)"/>
+      <circle cx="155" cy="62" r="1.3" fill="#2F7FA8"/>
+    </svg>
+    <div class="logo">Q</div>
+  </div>
+</div>
+
+<div class="controls">
+  <div class="row"><span class="lbl">Скорость печати</span>
+    <input type="range" id="speed" min="6" max="40" step="1" value="15" oninput="setSpeed(this.value)">
+    <span class="val" id="speedVal"></span>
+  </div>
+  <div class="row"><span class="lbl">Ведущий</span>
+    <button onclick="run(choose)">Выбрать ячейку</button>
+    <button onclick="run(toBoard)">К сетке</button>
+  </div>
+  <div class="row"><span class="lbl">Игра</span>
+    <button onclick="run(() => buzz('Котики'))">Нажали: Котики</button>
+    <button onclick="run(() => buzz('Ёжики'))">Нажали: Ёжики</button>
+    <button onclick="run(wrong)">✗ неверно</button>
+    <button onclick="run(right)">✓ верно</button>
+    <button onclick="run(right)">Показать ответ</button>
+  </div>
+</div>
+<p class="note" id="note"></p>
+
+<script>
+(function () {
+  const stage = document.getElementById('stage');
+  const note = document.getElementById('note');
+  const cats = ['Кино', 'География', 'Музыка'];
+  const vals = [100, 200, 300, 400];
+  const jq = {
+    'Кино·300': ['В каком фильме 1984 года киборг, присланный из будущего, произносит знаменитую фразу «Я вернусь»?', 'Терминатор'],
+    'Музыка·200': ['Какой группе принадлежит альбом «Группа крови»?', 'Кино'],
+    'География·300': ['Эта европейская страна по форме напоминает сапог, а её столица стоит на семи холмах. Назовите страну.', 'Италия'],
+    'Кино·100': ['Как зовут главного героя «Бриллиантовой руки»?', 'Семён Семёнович Горбунков'],
+    'Музыка·400': ['Этот композитор написал оперу «Евгений Онегин», балет «Лебединое озеро» и цикл «Времена года». Кто он?', 'Чайковский'],
+  };
+  const order = Object.keys(jq);
+  const S = { layer: null, scene: 'board', busy: false, played: new Set(['Кино·200', 'География·100', 'География·400']), current: null,
+    speed: 15, shown: 0, running: false, startedAt: 0, base: 0, raf: 0, excluded: new Set() };
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const FADE_OUT = [{ opacity: 1 }, { opacity: 0 }];
+  const RISE_IN = [{ opacity: 0, transform: 'translateY(3%)' }, { opacity: 1, transform: 'none' }];
+  const POP = [{ opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'scale(1.15)', offset: 0.6 }, { opacity: 1, transform: 'scale(.97)', offset: 0.85 }, { opacity: 1, transform: 'none' }];
+  function layer(html) { const el = document.createElement('div'); el.className = 'layer'; el.innerHTML = html; return el; }
+  function anim(el, kf, opts) { return el.animate(kf, Object.assign({ fill: 'both', easing: 'ease-out' }, opts)).finished; }
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  function boardHTML() {
+    const rows = cats.map((c) => '<div class="cell cat">' + c + '</div>' + vals.map((v) => {
+      const k = c + '·' + v;
+      return '<div class="cell' + (S.played.has(k) ? ' played' : '') + '" data-k="' + k + '">' + v + '</div>';
+    }).join('')).join('');
+    return '<div class="qhead"></div><div class="body"><div class="board">' + rows + '</div>' +
+      '<div class="scores"><span class="ch">▶ Котики <b>300</b></span><span>Ёжики <b>100</b></span><span>Совы <b>0</b></span></div></div>';
+  }
+
+  // ---------- typing ----------
+  function text() { return jq[S.current][0]; }
+  function chars() { return S.running ? Math.min(text().length, S.base + (performance.now() - S.startedAt) / 1000 * S.speed) : S.base; }
+  function paint() {
+    const q = S.layer && S.layer.querySelector('.qtext'); if (!q) return;
+    const t = text(); const n = Math.floor(chars());
+    q.innerHTML = esc(t.slice(0, n)) + '<span class="caret"></span><span class="rest">' + esc(t.slice(n)) + '</span>';
+    q.classList.toggle('frozen', !S.running);
+    q.classList.toggle('done', n >= t.length);
+    if (S.running && n >= t.length) { S.running = false; S.base = t.length; }
+    if (S.running) S.raf = requestAnimationFrame(paint);
+  }
+  function startTyping() { S.startedAt = performance.now(); S.running = true; cancelAnimationFrame(S.raf); paint(); }
+  function stopTyping() { S.base = chars(); S.running = false; cancelAnimationFrame(S.raf); paint(); }
+
+  window.setSpeed = function (v) {
+    if (S.running) { S.base = chars(); S.startedAt = performance.now(); }
+    S.speed = Number(v);
+    const sample = jq['Кино·300'][0].length;
+    document.getElementById('speedVal').textContent = v + ' знаков/с · вопрос «Терминатор» (' + sample + ' зн.) за ' + (sample / v).toFixed(1).replace('.', ',') + ' с';
+  };
+
+  // ---------- scenes ----------
+  async function toBoard() {
+    if (S.scene === 'board') return;
+    cancelAnimationFrame(S.raf); S.running = false;
+    if (S.current) { S.played.add(S.current); S.current = null; }
+    const next = layer(boardHTML());
+    const old = S.layer; stage.appendChild(next); S.layer = next;
+    const cells = [...next.querySelectorAll('.cell:not(.cat)')];
+    cells.forEach((c) => (c.style.opacity = 0));
+    if (old) await anim(old, FADE_OUT, { duration: 200, easing: 'ease-in' }).then(() => old.remove());
+    await Promise.all(cells.map((c, i) => anim(c, [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1.06)', offset: 0.7 }, { opacity: 1, transform: 'none' }],
+      { duration: 320, delay: i * 22 }).then(() => (c.style.opacity = ''))));
+    S.scene = 'board';
+  }
+
+  async function choose() {
+    if (S.scene !== 'board') await toBoard();
+    const key = order.find((k) => !S.played.has(k));
+    if (!key) { note.textContent = 'Все ячейки прототипа сыграны — обнови страницу.'; return; }
+    const cell = S.layer.querySelector('[data-k="' + key + '"]');
+    const [cat, val] = key.split('·');
+    S.current = key; S.base = 0; S.excluded = new Set();
+    const next = layer('<div class="qhead"><strong>' + cat + ' · ' + val + '</strong></div><div class="body"><div class="qtext"></div><div class="foot"></div></div>');
+    for (let i = 0; i < 2; i++) {
+      await anim(cell, [{ background: 'var(--surface)', color: 'var(--accent)' }, { background: 'var(--accent)', color: 'var(--on-accent)' }], { duration: 110 });
+      await anim(cell, [{ background: 'var(--accent)', color: 'var(--on-accent)' }, { background: 'var(--surface)', color: 'var(--accent)' }], { duration: 110 });
+    }
+    const f = stage.getBoundingClientRect(); const r = cell.getBoundingClientRect();
+    const z = document.createElement('div'); z.className = 'zoom'; z.textContent = cell.textContent; stage.appendChild(z);
+    const from = { left: (r.left - f.left) + 'px', top: (r.top - f.top) + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: '10px', background: 'var(--accent)' };
+    const to = { left: '0px', top: '0px', width: f.width + 'px', height: f.height + 'px', borderRadius: '0px', background: 'var(--bg)' };
+    z.animate([{ color: 'var(--on-accent)' }, { color: 'transparent' }], { duration: 300, fill: 'both' });
+    await anim(z, [from, to], { duration: 420, easing: 'cubic-bezier(.5,0,.2,1)' });
+    S.layer.remove(); stage.insertBefore(next, z); S.layer = next; S.running = false; paint();
+    await Promise.all([anim(next, RISE_IN, { duration: 260 }), anim(z, FADE_OUT, { duration: 200 }).then(() => z.remove())]);
+    S.scene = 'question';
+    startTyping();
+  }
+
+  async function buzz(team) {
+    if (S.scene !== 'question' || S.excluded.has(team)) return;
+    stopTyping();
+    S.scene = 'answering'; S.answering = team;
+    const foot = S.layer.querySelector('.foot');
+    foot.innerHTML = '<div class="who">Отвечает: ' + team + '</div>';
+    await anim(foot.firstChild, POP, { duration: 450 });
+  }
+
+  async function wrong() {
+    if (S.scene !== 'answering') return;
+    S.excluded.add(S.answering);
+    const who = S.layer.querySelector('.who');
+    if (who) await anim(who, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(4%)' }], { duration: 250, easing: 'ease-in' }).then(() => who.remove());
+    S.scene = 'question';
+    startTyping();
+  }
+
+  async function right() {
+    if (S.scene !== 'question' && S.scene !== 'answering') return;
+    cancelAnimationFrame(S.raf); S.running = false; S.base = text().length; paint();
+    const who = S.layer.querySelector('.who'); if (who) who.remove();
+    const q = S.layer.querySelector('.qtext');
+    const a = document.createElement('div'); a.className = 'answer'; a.innerHTML = 'Ответ: <span>' + jq[S.current][1] + '</span>';
+    S.layer.querySelector('.foot').before(a);
+    anim(q, [{ opacity: 1, transform: 'none' }, { opacity: 0.55, transform: 'scale(.9)' }], { duration: 300 });
+    await anim(a, POP, { duration: 600 });
+    S.scene = 'answer';
+  }
+
+  window.run = async function (fn) {
+    if (S.busy) return;
+    S.busy = true;
+    try { await fn(); } finally { S.busy = false; }
+  };
+  Object.assign(window, { choose, toBoard, buzz, wrong, right });
+
+  S.layer = layer(boardHTML()); stage.appendChild(S.layer);
+  window.setSpeed(15);
+  note.textContent = 'Для ориентира: чтение вслух — примерно 12–15 знаков в секунду, быстрое чтение глазами — 25–30.';
+})();
+</script>
