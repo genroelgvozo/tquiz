@@ -1,20 +1,22 @@
 import type { ReactNode } from "react";
 import type { ScreenQuestion } from "../../lib/types";
+import { SceneHeader } from "./SceneHeader";
 
 export default function QuestionView({
   q,
+  head,
   footer,
   dimText = false,
-  tag,
 }: {
   q: ScreenQuestion;
+  /** Header next to the logo: `main` bold in the accent colour, `tail` muted. */
+  head: { main: string; tail?: string };
   footer?: ReactNode;
   dimText?: boolean;
-  tag?: string;
 }) {
   return (
     <div className="scr-question">
-      <div className="scr-tag">{tag ?? q.title}</div>
+      <SceneHeader main={head.main} tail={head.tail} />
       <div className={`scr-q-text ${dimText ? "dim" : ""}`}>{q.text}</div>
       {q.media?.kind === "image" && (
         <div className="scr-q-image">

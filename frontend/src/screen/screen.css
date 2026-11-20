@@ -19,6 +19,46 @@
   height: 8vh;
 }
 
+/* scenes overlap while one changes to another */
+.scr-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4vh 4vw;
+}
+
+/* bold header at the top left: on the logo's line, right of it, or from the left margin without a logo */
+.scr-head {
+  position: absolute;
+  top: 2.5vh;
+  left: 4vw;
+  right: 8vw;
+  line-height: 8vh;
+  font-size: 1.8em;
+  white-space: nowrap;
+}
+
+.scr-with-logo .scr-head {
+  left: calc(2vw + 8vh + 1.5vw);
+}
+
+/* inline-block: the main part can be moved and scaled as a whole (a title flying into the header) */
+.scr-head-main {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.scr-head-tail {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .scr-center {
   flex: 1;
   display: flex;
@@ -147,16 +187,9 @@
   display: flex;
   flex-direction: column;
   gap: 2.5vh;
-  padding-top: 6vh;
+  /* below the header */
+  padding-top: 9.5vh;
   min-height: 0;
-}
-
-.scr-tag {
-  position: absolute;
-  top: 3.5vh;
-  right: 4vw;
-  color: var(--muted);
-  font-size: 0.9em;
 }
 
 .scr-tag-inline {

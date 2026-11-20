@@ -14,6 +14,7 @@
     "@mantine/hooks": "8.3.18",
     "@mantine/modals": "8.3.18",
     "@mantine/notifications": "8.3.18",
+    "motion": "12.43.0",
     "qrcode.react": "4.1.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
