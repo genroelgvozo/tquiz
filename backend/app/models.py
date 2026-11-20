@@ -5,12 +5,16 @@ from sqlmodel import Field, SQLModel
 
 
 DEFAULT_CELL_VALUES = [100, 200, 300, 400, 500]
+DEFAULT_THEME = {"bg": "#FBF5EA", "text": "#2B2420", "accent": "#E2552F", "second": "#2F7FA8"}  # Сливки
 
 
 class Quiz(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     title: str
     logo_filename: str | None = None
+    theme: dict = Field(default_factory=lambda: dict(DEFAULT_THEME), sa_column=Column(JSON, nullable=False))
+    background_filename: str | None = None
+    lobby_music_filename: str | None = None
 
 
 class Round(SQLModel, table=True):
@@ -30,6 +34,12 @@ class Round(SQLModel, table=True):
     discuss_seconds: int = 60
     input_seconds: int = 15
     stakes: bool = False
+    # appearance
+    background_filename: str | None = None
+    intro_music_filename: str | None = None
+    think_music_filename: str | None = None
+    typewriter: bool = False
+    type_speed: int = 15
 
 
 class Category(SQLModel, table=True):

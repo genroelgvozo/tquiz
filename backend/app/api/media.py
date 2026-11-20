@@ -3,6 +3,7 @@
 import re
 import secrets
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -16,6 +17,15 @@ CHUNK = 1024 * 1024
 FILENAME_RE = re.compile(r"^[0-9a-f]{32}\.(jpg|jpeg|png|webp|gif|mp3|m4a|ogg|wav)$")
 
 router = APIRouter()
+
+
+def media_kind_of(filename: str) -> Literal["image", "audio"] | None:
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in IMAGE_EXT:
+        return "image"
+    if ext in AUDIO_EXT:
+        return "audio"
+    return None
 
 
 def _media_dir(request: Request) -> Path:

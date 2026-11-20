@@ -2,10 +2,10 @@
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from app.models import DEFAULT_CELL_VALUES, Category, Question, Quiz, Round
+from app.models import DEFAULT_CELL_VALUES, DEFAULT_THEME, Category, Question, Quiz, Round
 
 MediaKind = Literal["image", "audio"]
 
@@ -18,6 +18,16 @@ class MediaRef(BaseModel):
 
 def media_ref(filename: str, kind: MediaKind) -> MediaRef:
     return MediaRef(filename=filename, kind=kind, url=f"/media/{filename}")
+
+
+HexColor = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+class Theme(BaseModel):
+    bg: str = HexColor
+    text: str = HexColor
+    accent: str = HexColor
+    second: str = HexColor
 
 
 class QuestionData(BaseModel):
@@ -52,6 +62,11 @@ class RoundData(BaseModel):
     input_seconds: int = 15
     stakes: bool = False
     cell_values: list[int] = [100, 200, 300, 400, 500]
+    background: MediaRef | None = None
+    intro_music: MediaRef | None = None
+    think_music: MediaRef | None = None
+    typewriter: bool = False
+    type_speed: int = 15
     categories: list[CategoryData] = []
     questions: list[QuestionData] = []
 
@@ -71,7 +86,14 @@ class QuizData(BaseModel):
     id: int
     title: str
     logo: MediaRef | None = None
+    theme: Theme = Theme(**DEFAULT_THEME)
+    background: MediaRef | None = None
+    lobby_music: MediaRef | None = None
     rounds: list[RoundData] = []
+
+
+def _ref(filename: str | None, kind: MediaKind) -> MediaRef | None:
+    return media_ref(filename, kind) if filename else None
 
 
 def _question_data(q: Question) -> QuestionData:
@@ -113,6 +135,11 @@ def load_quiz_data(session: Session, quiz_id: int) -> QuizData:
             input_seconds=r.input_seconds,
             stakes=r.stakes,
             cell_values=list(r.cell_values or DEFAULT_CELL_VALUES),
+            background=_ref(r.background_filename, "image"),
+            intro_music=_ref(r.intro_music_filename, "audio"),
+            think_music=_ref(r.think_music_filename, "audio"),
+            typewriter=r.typewriter,
+            type_speed=r.type_speed,
         )
         if r.kind == "jeopardy":
             cats = session.exec(
@@ -136,4 +163,12 @@ def load_quiz_data(session: Session, quiz_id: int) -> QuizData:
             data.questions = [_question_data(q) for q in questions]
         result.append(data)
     logo = media_ref(quiz.logo_filename, "image") if quiz.logo_filename else None
-    return QuizData(id=quiz.id, title=quiz.title, logo=logo, rounds=result)
+    return QuizData(
+        id=quiz.id,
+        title=quiz.title,
+        logo=logo,
+        theme=Theme(**(quiz.theme or DEFAULT_THEME)),
+        background=_ref(quiz.background_filename, "image"),
+        lobby_music=_ref(quiz.lobby_music_filename, "audio"),
+        rounds=result,
+    )

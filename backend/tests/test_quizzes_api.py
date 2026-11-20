@@ -1,3 +1,4 @@
+import json
 import sqlite3
 
 from app.api.quizzes import next_cell_value
@@ -141,4 +142,83 @@ def test_old_db_without_cell_values_column_migrates(tmp_path):
     cols = [r[1] for r in con.execute("PRAGMA table_info(round)")]
     assert "cell_values" in cols
     assert con.execute("SELECT cell_values FROM round").fetchone()[0] == "[100, 200, 300, 400, 500]"
+    con.close()
+
+
+CREAM = {"bg": "#FBF5EA", "text": "#2B2420", "accent": "#E2552F", "second": "#2F7FA8"}
+NIGHT = {"bg": "#16192B", "text": "#F3F1EA", "accent": "#FF8A5B", "second": "#5CC8C2"}
+IMG, MP3 = "a" * 32 + ".png", "b" * 32 + ".mp3"
+
+
+def test_new_quiz_has_cream_theme_and_no_media(admin_client):
+    quiz = admin_client.post("/api/quizzes", json={"title": "Q"}).json()["quiz"]
+    assert quiz["theme"] == CREAM and quiz["background"] is None and quiz["lobby_music"] is None
+
+
+def test_patch_quiz_theme_background_and_lobby_music(admin_client):
+    qid = make_quiz(admin_client)
+    p = admin_client.patch(
+        f"/api/quizzes/{qid}", json={"theme": NIGHT, "background_filename": IMG, "lobby_music_filename": MP3}
+    )
+    quiz = p.json()["quiz"]
+    assert quiz["theme"] == NIGHT and quiz["background"]["url"] == f"/media/{IMG}" and quiz["lobby_music"]["kind"] == "audio"
+    assert admin_client.patch(f"/api/quizzes/{qid}", json={"theme": {**NIGHT, "bg": "red"}}).status_code == 422
+    assert admin_client.patch(f"/api/quizzes/{qid}", json={"background_filename": MP3}).status_code == 422
+    assert admin_client.patch(f"/api/quizzes/{qid}", json={"lobby_music_filename": IMG}).status_code == 422
+    quiz = admin_client.patch(f"/api/quizzes/{qid}", json={"background_filename": None}).json()["quiz"]
+    assert quiz["background"] is None and quiz["theme"] == NIGHT
+
+
+def test_patch_round_appearance_and_typewriter(admin_client):
+    qid = make_quiz(admin_client)
+    rnd = admin_client.post(f"/api/quizzes/{qid}/rounds", json={"title": "Т", "kind": "jeopardy"}).json()["quiz"]["rounds"][0]
+    assert (rnd["typewriter"], rnd["type_speed"], rnd["background"], rnd["intro_music"]) == (False, 15, None, None)
+    body = {"background_filename": IMG, "intro_music_filename": MP3, "think_music_filename": MP3, "typewriter": True, "type_speed": 20}
+    rnd = admin_client.patch(f"/api/rounds/{rnd['id']}", json=body).json()["quiz"]["rounds"][0]
+    assert rnd["background"]["kind"] == "image" and rnd["intro_music"]["kind"] == "audio" and rnd["think_music"]
+    assert (rnd["typewriter"], rnd["type_speed"]) == (True, 20)
+    assert admin_client.patch(f"/api/rounds/{rnd['id']}", json={"intro_music_filename": IMG}).status_code == 422
+    assert admin_client.patch(f"/api/rounds/{rnd['id']}", json={"background_filename": MP3}).status_code == 422
+    assert admin_client.patch(f"/api/rounds/{rnd['id']}", json={"type_speed": 0}).status_code == 422
+    rnd = admin_client.patch(f"/api/rounds/{rnd['id']}", json={"intro_music_filename": None}).json()["quiz"]["rounds"][0]
+    assert rnd["intro_music"] is None and rnd["background"] is not None
+
+
+def test_copy_quiz_copies_appearance(admin_client):
+    qid = make_quiz(admin_client)
+    admin_client.patch(
+        f"/api/quizzes/{qid}", json={"theme": NIGHT, "background_filename": IMG, "lobby_music_filename": MP3}
+    )
+    rnd = admin_client.post(f"/api/quizzes/{qid}/rounds", json={"title": "Т", "kind": "free"}).json()["quiz"]["rounds"][0]
+    admin_client.patch(f"/api/rounds/{rnd['id']}", json={"background_filename": IMG, "typewriter": True})
+    copy = admin_client.post(f"/api/quizzes/{qid}/copy").json()["quiz"]
+    assert copy["id"] != qid and copy["theme"] == NIGHT
+    assert copy["background"]["filename"] == IMG and copy["lobby_music"]["filename"] == MP3
+    assert copy["rounds"][0]["background"]["filename"] == IMG and copy["rounds"][0]["typewriter"] is True
+
+
+def test_old_db_gets_appearance_columns(tmp_path):
+    engine = make_engine(tmp_path)
+    con = sqlite3.connect(tmp_path / "tquiz.db")
+    con.execute("CREATE TABLE quiz (id INTEGER PRIMARY KEY, title VARCHAR NOT NULL, logo_filename VARCHAR)")
+    con.execute("INSERT INTO quiz VALUES (1, 'Старый', NULL)")
+    con.execute(
+        "CREATE TABLE round (id INTEGER PRIMARY KEY, quiz_id INTEGER NOT NULL, position INTEGER NOT NULL,"
+        " title VARCHAR NOT NULL, kind VARCHAR NOT NULL, minus_on_wrong BOOLEAN NOT NULL,"
+        " buzzer_mode VARCHAR NOT NULL, bar_seconds INTEGER NOT NULL, discuss_seconds INTEGER NOT NULL,"
+        " input_seconds INTEGER NOT NULL, stakes BOOLEAN NOT NULL, cell_values JSON NOT NULL)"
+    )
+    con.execute("INSERT INTO round VALUES (1, 1, 0, 'Старый', 'jeopardy', 0, 'bar', 5, 60, 15, 0, '[100]')")
+    con.commit()
+    con.close()
+    init_db(engine)
+    con = sqlite3.connect(tmp_path / "tquiz.db")
+    qcols = [r[1] for r in con.execute("PRAGMA table_info(quiz)")]
+    rcols = [r[1] for r in con.execute("PRAGMA table_info(round)")]
+    for c in ("theme", "background_filename", "lobby_music_filename"):
+        assert c in qcols
+    for c in ("background_filename", "intro_music_filename", "think_music_filename", "typewriter", "type_speed"):
+        assert c in rcols
+    assert json.loads(con.execute("SELECT theme FROM quiz").fetchone()[0]) == CREAM
+    assert con.execute("SELECT typewriter, type_speed FROM round").fetchone() == (0, 15)
     con.close()

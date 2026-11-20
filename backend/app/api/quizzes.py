@@ -9,7 +9,8 @@ from sqlmodel import Session, SQLModel, func, select
 from app.auth import require_admin
 from app.db import get_session
 from app.models import DEFAULT_CELL_VALUES, Category, Question, Quiz, Round
-from app.quizdata import load_quiz_data
+from app.api.media import media_kind_of
+from app.quizdata import Theme, load_quiz_data
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -26,6 +27,9 @@ class QuizCreate(BaseModel):
 class QuizUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     logo_filename: str | None = None
+    theme: Theme | None = None
+    background_filename: str | None = None
+    lobby_music_filename: str | None = None
 
 
 class RoundCreate(BaseModel):
@@ -44,6 +48,11 @@ class RoundUpdate(BaseModel):
     input_seconds: int | None = Field(default=None, ge=0, le=3600)
     stakes: bool | None = None
     cell_values: list[int] | None = None
+    background_filename: str | None = None
+    intro_music_filename: str | None = None
+    think_music_filename: str | None = None
+    typewriter: bool | None = None
+    type_speed: int | None = Field(default=None, ge=1, le=100)
 
 
 class CategoryCreate(BaseModel):
@@ -155,6 +164,19 @@ def _add_category(session: Session, rnd: Round, name: str) -> None:
         session.add(Question(round_id=rnd.id, category_id=cat.id, position=i, value=value))
 
 
+BACKGROUND_FIELDS = {"background_filename"}
+MUSIC_FIELDS = {"lobby_music_filename", "intro_music_filename", "think_music_filename"}
+
+
+def _check_media_field(key: str, filename: str | None) -> None:
+    if filename is None:
+        return
+    if key in BACKGROUND_FIELDS and media_kind_of(filename) != "image":
+        raise HTTPException(422, "Фон должен быть картинкой")
+    if key in MUSIC_FIELDS and media_kind_of(filename) != "audio":
+        raise HTTPException(422, "Музыка должна быть аудиофайлом")
+
+
 def _validate_question(q: Question) -> None:
     opts = q.options or []
     if opts and not (2 <= len(opts) <= 4 and all(o.strip() for o in opts)):
@@ -193,8 +215,9 @@ def update_quiz(quiz_id: int, body: QuizUpdate, request: Request, session: Sessi
     quiz = _get(session, Quiz, quiz_id)
     _ensure_unlocked(request, quiz_id)
     for key, value in body.model_dump(exclude_unset=True).items():
-        if key == "title" and value is None:
+        if key in ("title", "theme") and value is None:
             continue
+        _check_media_field(key, value)
         setattr(quiz, key, value)
     session.add(quiz)
     session.commit()
@@ -216,7 +239,13 @@ def delete_quiz(quiz_id: int, request: Request, session: Session = Depends(get_s
 @router.post("/api/quizzes/{quiz_id}/copy")
 def copy_quiz(quiz_id: int, request: Request, session: Session = Depends(get_session)) -> dict:
     src = _get(session, Quiz, quiz_id)
-    new_quiz = Quiz(title=f"{src.title} (копия)", logo_filename=src.logo_filename)
+    new_quiz = Quiz(
+        title=f"{src.title} (копия)",
+        logo_filename=src.logo_filename,
+        theme=dict(src.theme),
+        background_filename=src.background_filename,
+        lobby_music_filename=src.lobby_music_filename,
+    )
     session.add(new_quiz)
     session.flush()
     rounds = session.exec(select(Round).where(Round.quiz_id == quiz_id)).all()
@@ -264,8 +293,9 @@ def update_round(round_id: int, body: RoundUpdate, request: Request, session: Se
     rnd = _get(session, Round, round_id)
     _ensure_unlocked(request, rnd.quiz_id)
     for key, value in body.model_dump(exclude_unset=True).items():
-        if value is None:
+        if value is None and key not in BACKGROUND_FIELDS | MUSIC_FIELDS:
             continue
+        _check_media_field(key, value)
         if key == "cell_values":
             value = _clean_cell_values(value)
         setattr(rnd, key, value)
