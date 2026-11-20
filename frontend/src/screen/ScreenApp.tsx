@@ -265,12 +265,22 @@ export default function ScreenApp() {
       <div className="scr-logo">
         <Logo url={view?.logo_url ?? null} />
       </div>
-      {view?.overlay === "leaderboard" && (
-        <div className="scr-overlay">
-          <Backdrop url={view.quiz_background_url} />
-          <LeaderboardView standings={view.standings} />
-        </div>
-      )}
+      {/* keyed by the epoch: an overlay already open at the first snapshot is drawn at once */}
+      <AnimatePresence key={`overlay-${stageEpoch}`} initial={false}>
+        {view?.overlay === "leaderboard" && (
+          <motion.div
+            key="leaderboard"
+            className="scr-overlay"
+            variants={variants.fade}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <Backdrop url={view.quiz_background_url} />
+            <LeaderboardView standings={view.standings} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {view && view.qr_visible && view.stage !== "lobby" && (
         <div className="scr-mini-qr">
           <Qr value={view.join_url} size={110} />

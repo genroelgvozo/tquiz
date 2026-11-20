@@ -1,5 +1,7 @@
+import { AnimatePresence, motion } from "motion/react";
 import { Qr } from "../../components/Qr";
 import type { ScreenView } from "../../lib/types";
+import { variants } from "../motion";
 
 export default function LobbyView({ view }: { view: ScreenView }) {
   return (
@@ -14,10 +16,19 @@ export default function LobbyView({ view }: { view: ScreenView }) {
           </>
         )}
         <ul className="scr-team-list">
-          {view.teams.map((t) => (
-            <li key={t.id}>✓ {t.name}</li>
-          ))}
-          {view.teams.length === 0 && <li className="scr-muted">Ждём команды…</li>}
+          {/* initial={false}: teams already there at the first draw do not pop */}
+          <AnimatePresence initial={false}>
+            {view.teams.map((t) => (
+              <motion.li key={t.id} variants={variants.pop} initial="hidden" animate="visible" exit="exit">
+                ✓ {t.name}
+              </motion.li>
+            ))}
+            {view.teams.length === 0 && (
+              <motion.li key="waiting" className="scr-muted" variants={variants.fade} initial="hidden" animate="visible" exit="exit">
+                Ждём команды…
+              </motion.li>
+            )}
+          </AnimatePresence>
         </ul>
       </div>
     </div>

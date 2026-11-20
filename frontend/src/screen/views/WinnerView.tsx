@@ -1,3 +1,5 @@
+import { motion } from "motion/react";
+import { variants } from "../motion";
 import type { Standings } from "../../lib/types";
 import { leadersAndRanks } from "../../lib/standings";
 import StandingsTable from "./StandingsTable";
@@ -10,10 +12,12 @@ export default function WinnerView({ standings }: { standings: Standings }) {
       {names.length > 0 && (
         <div className="scr-center" style={{ flex: "none", paddingBottom: 0 }}>
           <div className="scr-h3 scr-muted">{names.length === 1 ? "Победитель" : "Победители"}</div>
-          <div className="scr-h1 scr-accent">{names.join(", ")}</div>
+          <motion.div className="scr-h1 scr-accent" variants={variants.winnerName}>
+            {names.join(", ")}
+          </motion.div>
         </div>
       )}
-      <StandingsTable standings={standings} title="Итоговый рейтинг" highlightLeaders={names.length > 0} />
+      <StandingsTable standings={standings} title="Итоговый рейтинг" highlightLeaders={names.length > 0} startDelay={1.0} />
     </div>
   );
 }

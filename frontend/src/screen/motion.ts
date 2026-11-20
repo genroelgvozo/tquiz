@@ -167,7 +167,40 @@ const secret = {
   },
 } satisfies Variants;
 
+/** Intro lines (round number, title, kind) one after another; `custom` is the line's index. */
+const introLine = {
+  hidden: rise.hidden,
+  visible: (i: number) => ({ ...rise.visible, transition: { duration: 0.35, delay: 0.2 + i * 0.4, ease: "easeOut" } }),
+  exit: rise.exit,
+} satisfies Variants;
+
+/** The round title in the intro: pops up as the second line. */
+const introTitle = {
+  hidden: pop.hidden,
+  visible: { ...pop.visible, transition: { ...pop.visible.transition, delay: 0.6 } },
+  exit: pop.exit,
+} satisfies Variants;
+
+/** Standings rows slide in one by one from the top; `custom` is the delay in seconds. No exit: the layer fades as a whole. */
+const standingsRow = {
+  hidden: { opacity: 0, y: -18 },
+  visible: (delay: number) => ({ opacity: 1, y: 0, transition: { duration: 0.3, delay, ease: "easeOut" } }),
+} satisfies Variants;
+/** Pause between standings rows, s. */
+export const ROW_STEP_S = 0.12;
+
+/** The winner's name pops up first, the table follows. */
+const winnerName = {
+  hidden: pop.hidden,
+  visible: { ...pop.visible, transition: { ...pop.visible.transition, delay: 0.25 } },
+  exit: pop.exit,
+} satisfies Variants;
+
 export const variants = {
+  introLine,
+  introTitle,
+  standingsRow,
+  winnerName,
   fade,
   rise,
   pop,
