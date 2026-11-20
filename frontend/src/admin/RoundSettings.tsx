@@ -2,6 +2,7 @@ import { Box, Button, Checkbox, Group, Input, NumberInput, Select, SimpleGrid, S
 import type { RoundData } from "../lib/types";
 import { formatCellValues, parseCellValues } from "./cellValues";
 import { confirmDialog } from "./dialogs";
+import MediaField from "./MediaField";
 import { notifyError } from "./notify";
 import type { Mutate } from "./QuizEditor";
 import { ROUND_KINDS } from "./roundKinds";
@@ -39,7 +40,12 @@ export default function RoundSettings({
   mutate: Mutate;
   onDeleted: () => void;
 }) {
-  const patch = (body: Partial<RoundData>) => mutate("PATCH", `/api/rounds/${round.id}`, body);
+  type RoundPatch = Partial<RoundData> & {
+    background_filename?: string | null;
+    intro_music_filename?: string | null;
+    think_music_filename?: string | null;
+  };
+  const patch = (body: RoundPatch) => mutate("PATCH", `/api/rounds/${round.id}`, body);
 
   return (
     <Stack>
@@ -113,6 +119,35 @@ export default function RoundSettings({
           />
         </>
       )}
+
+      <Stack>
+        <SectionLabel mb={0}>Оформление</SectionLabel>
+        <MediaField
+          label="Фон тура"
+          description="пусто — фон квиза"
+          kind="image"
+          value={round.background}
+          disabled={false}
+          onChange={(f) => patch({ background_filename: f })}
+        />
+        <MediaField
+          label="Музыка заставки"
+          kind="audio"
+          value={round.intro_music}
+          disabled={false}
+          onChange={(f) => patch({ intro_music_filename: f })}
+        />
+        {round.kind === "free" && (
+          <MediaField
+            label="Музыка размышления"
+            description="играет, пока идёт таймер"
+            kind="audio"
+            value={round.think_music}
+            disabled={false}
+            onChange={(f) => patch({ think_music_filename: f })}
+          />
+        )}
+      </Stack>
 
       <Group>
         <Button

@@ -22,6 +22,7 @@ import type { EditorPayload, QuestionData, RoundData } from "../lib/types";
 import { confirmDialog, newRoundDialog, promptDialog } from "./dialogs";
 import { notifyApiError, notifyError } from "./notify";
 import QuestionForm from "./QuestionForm";
+import QuizAppearance from "./QuizAppearance";
 import RoundSettings from "./RoundSettings";
 import { ROUND_KINDS } from "./roundKinds";
 import { startGame } from "./startGame";
@@ -198,6 +199,10 @@ export default function QuizEditor() {
         )}
         <Button onClick={start}>Начать игру</Button>
       </Group>
+
+      <Paper withBorder p="md">
+        <QuizAppearance quiz={quiz} locked={locked} mutate={mutate} />
+      </Paper>
 
       <Grid align="flex-start">
         <Grid.Col span={{ base: 12, md: 4 }}>
