@@ -5,19 +5,38 @@ import type { AudioAction, ScreenView } from "../lib/types";
 export const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 const AUDIO_RE = /\.(mp3|m4a|ogg|wav)$/i;
 
+/** The browser refused to play because the page has no permission to make sound (no user gesture yet). */
+export const isBlocked = (e: unknown) => (e as { name?: string } | null)?.name === "NotAllowedError";
+
+/**
+ * Plays the silent clip on `p`; call it inside the user's click.
+ * Resolves to false if the browser refused; any other outcome (say, an interrupted play) is not a refusal.
+ */
+export function unlockPlayer(p: HTMLAudioElement): Promise<boolean> {
+  p.src = SILENT_WAV;
+  return p.play().then(
+    () => true,
+    (e: unknown) => !isBlocked(e),
+  );
+}
+
 function currentAudioUrl(view: ScreenView | null): string | null {
   const media = view?.jeopardy?.question?.media ?? view?.free?.question?.media ?? null;
   return media && media.kind === "audio" ? media.url : null;
 }
 
-function apply(player: HTMLAudioElement, action: AudioAction) {
+function apply(player: HTMLAudioElement, action: AudioAction, onBlocked: () => void) {
+  const play = () =>
+    void player.play().catch((e: unknown) => {
+      if (isBlocked(e)) onBlocked();
+    });
   if (action === "play") {
-    void player.play().catch(() => {});
+    play();
   } else if (action === "pause") {
     player.pause();
   } else if (action === "restart") {
     player.currentTime = 0;
-    void player.play().catch(() => {});
+    play();
   } else {
     player.pause();
     player.currentTime = 0;
@@ -27,9 +46,12 @@ function apply(player: HTMLAudioElement, action: AudioAction) {
 /**
  * One persistent player (so unlocking it once is enough even on Safari), driven by `view.audio.seq`.
  * Round media is warmed into the HTTP cache via `view.preload`.
+ * `onBlocked` is called if the browser refuses to play after all; the current command is applied again after the next unlock.
  */
-export function useScreenAudio(view: ScreenView | null, unlocked: boolean) {
+export function useScreenAudio(view: ScreenView | null, unlocked: boolean, onBlocked?: () => void) {
   const player = useRef<HTMLAudioElement | null>(null);
+  const blocked = useRef(onBlocked);
+  blocked.current = onBlocked;
   const lastSeq = useRef<number | null>(null);
   const warmed = useRef(new Map<string, HTMLAudioElement | HTMLImageElement>());
   const src = currentAudioUrl(view);
@@ -71,7 +93,10 @@ export function useScreenAudio(view: ScreenView | null, unlocked: boolean) {
       p.src = src;
       p.load();
     }
-    apply(p, action);
+    apply(p, action, () => {
+      lastSeq.current = null; // a playing track resumes after the next unlock
+      blocked.current?.();
+    });
   }, [seq, action, unlocked, src]);
 
   // preload round media
@@ -93,21 +118,22 @@ export function useScreenAudio(view: ScreenView | null, unlocked: boolean) {
     }
   }, [preload]);
 
-  /** Must be called synchronously inside the user's click so the browser lets this player make sound. */
-  return useCallback(() => {
+  /**
+   * Must be called synchronously inside the user's click so the browser lets this player make sound.
+   * Resolves to false if the browser refused.
+   */
+  return useCallback((): Promise<boolean> => {
     const p = player.current;
-    if (!p) return;
+    if (!p) return Promise.resolve(true); // no audio support: nothing to unlock
     const target = currentSrc.current;
-    p.src = SILENT_WAV;
-    void p
-      .play()
-      .catch(() => {})
-      .finally(() => {
-        if (target && p.src === SILENT_WAV) {
-          p.src = target;
-          p.load();
-        }
-      });
+    const unlocked = unlockPlayer(p);
+    void unlocked.finally(() => {
+      if (target && p.src === SILENT_WAV) {
+        p.src = target;
+        p.load();
+      }
+    });
+    return unlocked;
   }, []);
 }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { MusicNow } from "../lib/types";
 import { musicStep } from "./musicPlan";
-import { SILENT_WAV } from "./useScreenAudio";
+import { isBlocked, unlockPlayer } from "./useScreenAudio";
 
 /** The music that goes away fades out over this time, then pauses. */
 export const MUSIC_FADE_MS = 1000;
@@ -10,10 +10,18 @@ const FADE_TICK_MS = 40;
 /**
  * Background music: its own looping player, separate from the question audio, following `music` from the snapshot.
  * Until `unlocked` nothing plays; after it the current music starts from the beginning.
- * Returns the unlock function: call it synchronously inside the user's click so the browser lets this player make sound.
+ * `onBlocked` is called if the browser refuses to play after all; the music starts again after the next unlock.
+ * Returns the unlock function: call it synchronously inside the user's click so the browser lets this player make sound;
+ * it resolves to false if the browser refused.
  */
-export function useBackgroundMusic(music: MusicNow | null, unlocked: boolean): () => void {
+export function useBackgroundMusic(
+  music: MusicNow | null,
+  unlocked: boolean,
+  onBlocked?: () => void,
+): () => Promise<boolean> {
   const player = useRef<HTMLAudioElement | null>(null);
+  const blocked = useRef(onBlocked);
+  blocked.current = onBlocked;
   const applied = useRef<MusicNow | null>(null); // the music the player follows now
   const fadeTimer = useRef<number | undefined>(undefined);
 
@@ -58,7 +66,12 @@ export function useBackgroundMusic(music: MusicNow | null, unlocked: boolean): (
       if (p.getAttribute("src") !== url) p.src = url;
       p.currentTime = 0;
     }
-    if (step === "load-play" || step === "play") void p.play().catch(() => {});
+    if (step === "load-play" || step === "play")
+      void p.play().catch((e: unknown) => {
+        if (!isBlocked(e)) return;
+        applied.current = null; // load it again after the next unlock
+        blocked.current?.();
+      });
     else p.pause();
   }, [url, key, playing, unlocked]);
 
@@ -72,11 +85,10 @@ export function useBackgroundMusic(music: MusicNow | null, unlocked: boolean): (
     [],
   );
 
-  return useCallback(() => {
+  return useCallback((): Promise<boolean> => {
     const p = player.current;
-    if (!p) return;
+    if (!p) return Promise.resolve(true); // no audio support: nothing to unlock
     p.loop = false; // the silent clip is empty: don't loop it
-    p.src = SILENT_WAV;
-    void p.play().catch(() => {});
+    return unlockPlayer(p);
   }, []);
 }

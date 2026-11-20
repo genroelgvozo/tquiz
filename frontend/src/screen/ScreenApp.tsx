@@ -109,6 +109,24 @@ function sceneContent({ shown }: SceneSequence, view: ScreenView | null, now: ()
   return <div className="scr-center scr-h1">{view?.quiz_title ?? "TQuiz"}</div>;
 }
 
+/** How long an unlock may take: a refused `AudioContext.resume()` may never settle. */
+const UNLOCK_TIMEOUT_MS = 2000;
+
+/** True when every check resolves to true; false as soon as one fails, rejects, or time runs out. */
+function allConfirmed(checks: Promise<boolean>[], ms: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let left = checks.length;
+    const timer = window.setTimeout(() => resolve(false), ms);
+    const done = (ok: boolean) => {
+      left -= 1;
+      if (ok && left > 0) return;
+      window.clearTimeout(timer);
+      resolve(ok);
+    };
+    for (const check of checks) check.then(done, () => done(false));
+  });
+}
+
 /** WebAudio for the buzz beep; null without WebAudio. */
 function newAudioContext(): AudioContext | null {
   try {
@@ -123,7 +141,8 @@ export default function ScreenApp() {
   const ready = useScreenAuth();
   const [view, setView] = useState<ScreenView | null>(null);
   const [unlocked, setUnlocked] = useState(false);
-  const soundOn = useRef(false); // `unlocked` without waiting for a render: the click after the pointerdown does nothing
+  const soundOn = useRef(false); // `unlocked` without waiting for a render
+  const unlocking = useRef(false); // an unlock is in progress (the icon's click also reaches the window listener)
   const [beepCtx, setBeepCtx] = useState<AudioContext | null>(null);
   // The first snapshot after loading or reconnecting remounts the stage, so it is drawn at once, without animation.
   const [stageEpoch, setStageEpoch] = useState(0);
@@ -143,8 +162,14 @@ export default function ScreenApp() {
   }, [status]);
   const now = useServerClock(view?.now);
   const style = themeVars(view?.theme ?? DEFAULT_THEME) as React.CSSProperties;
-  const unlockQuestionAudio = useScreenAudio(view, unlocked);
-  const unlockMusic = useBackgroundMusic(view?.music ?? null, unlocked);
+  const setSound = useCallback((on: boolean) => {
+    soundOn.current = on;
+    setUnlocked(on);
+  }, []);
+  // safety net: a player was refused after all, so the sound is off again and the console warns the host
+  const soundBlocked = useCallback(() => setSound(false), [setSound]);
+  const unlockQuestionAudio = useScreenAudio(view, unlocked, soundBlocked);
+  const unlockMusic = useBackgroundMusic(view?.music ?? null, unlocked, soundBlocked);
   // a suspended context would play a queued beep on unlocking, so no beeps until then
   useBuzzBeep(view?.jeopardy?.answering_team_id, unlocked ? beepCtx : null);
 
@@ -154,9 +179,8 @@ export default function ScreenApp() {
     if (!ctx) return;
     setBeepCtx(ctx);
     const onState = () => {
-      if (ctx.state !== "running") return;
-      soundOn.current = true;
-      setUnlocked(true);
+      // during an unlock the unlock itself decides
+      if (ctx.state === "running" && !unlocking.current) setSound(true);
     };
     ctx.addEventListener("statechange", onState);
     onState();
@@ -164,23 +188,32 @@ export default function ScreenApp() {
       ctx.removeEventListener("statechange", onState);
       void ctx.close().catch(() => {});
     };
-  }, []);
+  }, [setSound]);
 
-  /** Unlocks both players and the beep; must run inside the user's click. */
+  /**
+   * Unlocks both players and the beep; must run inside the user's click.
+   * The sound counts as on only when the browser accepted all three; otherwise it stays off and the next click tries again.
+   */
   const enableSound = useCallback(() => {
-    if (soundOn.current) return;
-    soundOn.current = true;
-    unlockQuestionAudio();
-    unlockMusic();
-    void beepCtx?.resume().catch(() => {});
-    setUnlocked(true);
-  }, [beepCtx, unlockQuestionAudio, unlockMusic]);
+    if (soundOn.current || unlocking.current) return;
+    unlocking.current = true;
+    const ctxRunning = beepCtx ? beepCtx.resume().then(() => beepCtx.state === "running") : Promise.resolve(true);
+    void allConfirmed([unlockQuestionAudio(), unlockMusic(), ctxRunning], UNLOCK_TIMEOUT_MS).then((ok) => {
+      unlocking.current = false;
+      if (ok) setSound(true);
+    });
+  }, [beepCtx, unlockQuestionAudio, unlockMusic, setSound]);
 
-  // the first click anywhere on the screen turns the sound on
+  // A click anywhere on the screen (or a key, e.g. OK on a TV remote) turns the sound on.
+  // Not pointerdown: a touch pointerdown doesn't count as a user gesture, only the tap's click does.
   useEffect(() => {
     if (unlocked) return;
-    window.addEventListener("pointerdown", enableSound, { once: true });
-    return () => window.removeEventListener("pointerdown", enableSound);
+    window.addEventListener("click", enableSound);
+    window.addEventListener("keydown", enableSound);
+    return () => {
+      window.removeEventListener("click", enableSound);
+      window.removeEventListener("keydown", enableSound);
+    };
   }, [unlocked, enableSound]);
 
   // the console warns the host while no screen has its sound on
