@@ -93,6 +93,19 @@ export default function RoundSettings({
               <NumberField label="Полоска, секунд" value={round.bar_seconds} onSave={(v) => patch({ bar_seconds: v })} />
             )}
           </SimpleGrid>
+          <Checkbox
+            label="Печатать вопрос по буквам"
+            checked={round.typewriter}
+            onChange={(e) => patch({ typewriter: e.currentTarget.checked })}
+          />
+          {round.typewriter && (
+            <NumberField
+              label="Скорость печати, знаков в секунду"
+              min={1}
+              value={round.type_speed}
+              onSave={(v) => patch({ type_speed: Math.min(100, Math.max(1, v)) })}
+            />
+          )}
         </>
       ) : (
         <>
