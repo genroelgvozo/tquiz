@@ -139,8 +139,8 @@
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  background: var(--line);
-  color: var(--muted);
+  background: var(--buzz-off);
+  color: var(--buzz-off-text);
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;

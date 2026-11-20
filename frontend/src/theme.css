@@ -16,6 +16,8 @@
   /* fixed signal colours, independent of the theme */
   --buzz-go: #E5484D;
   --buzz-me: #2E9E5B;
+  --buzz-off: #C7C7CC;
+  --buzz-off-text: #636366;
   --danger: #E5484D;
 
   --light-bg: #f5f5f7;
