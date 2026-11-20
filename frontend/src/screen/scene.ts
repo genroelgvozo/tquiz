@@ -57,6 +57,16 @@ export function sceneOf(view: ScreenView | null): Scene {
   }
 }
 
+/**
+ * The scene for the stage under the standings overlay. The overlay covers the stage, so while it is open the stage keeps
+ * the scene it showed when the overlay opened (`frozen`): a scene that changed under the overlay plays its entrance once
+ * the overlay clears, and one that didn't change doesn't replay it. Without a frozen scene (the first snapshot after
+ * loading or reconnecting) the snapshot's own scene.
+ */
+export function stageScene(frozen: Scene | null, view: ScreenView | null): Scene {
+  return view?.overlay && frozen !== null ? frozen : sceneOf(view);
+}
+
 export function planTransition(prev: Scene | null, next: Scene): Transition {
   if (prev === null || prev.key === next.key) return { entrance: "none", holdMs: 0 };
   if (next.kind === "jq") {

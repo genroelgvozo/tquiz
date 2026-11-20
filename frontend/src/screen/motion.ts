@@ -13,7 +13,7 @@ export const ZOOM_MS = 420;
 export const CONTENT_MS = 250;
 /** The big title pops up in the centre, stays, then flies into the header. */
 export const TITLE_POP_MS = 350;
-export const TITLE_HOLD_MS = 200;
+export const TITLE_HOLD_MS = 100;
 export const TITLE_FLY_MS = 400;
 
 export const ZOOM_TOTAL_MS = 4 * BLINK_MS + ZOOM_MS + CONTENT_MS;

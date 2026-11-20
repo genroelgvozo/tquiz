@@ -3,9 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** Returns a function giving the current *server* time (epoch seconds), corrected by the last snapshot's `now`. */
 export function useServerClock(serverNow: number | undefined): () => number {
   const offset = useRef(0);
-  useEffect(() => {
-    if (serverNow !== undefined) offset.current = serverNow - Date.now() / 1000;
-  }, [serverNow]);
+  const lastNow = useRef<number | undefined>(undefined);
+  // set during render, so the render that draws a snapshot already uses its clock (not the raw local one)
+  if (serverNow !== undefined && serverNow !== lastNow.current) {
+    lastNow.current = serverNow;
+    offset.current = serverNow - Date.now() / 1000;
+  }
   return useCallback(() => Date.now() / 1000 + offset.current, []);
 }
 

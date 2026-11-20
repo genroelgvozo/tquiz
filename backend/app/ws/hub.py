@@ -134,15 +134,14 @@ class Hub:
         await ws.accept()
         async with self.lock:
             self.screens.add(ws)
-            self.screen_sound[ws] = False
+            # counted for the sound warning only after its first report, so a connecting screen doesn't flash "off"
             await self._send(ws, self._screen_message())
-            await self._broadcast_admins()
         try:
             while True:
                 data = await self._receive(ws)
                 if data is not None and data.get("type") == "sound":
                     async with self.lock:
-                        if ws in self.screen_sound:
+                        if ws in self.screens:
                             self.screen_sound[ws] = data.get("on") is True
                             await self._broadcast_admins()
         except WebSocketDisconnect:
@@ -150,8 +149,8 @@ class Hub:
         finally:
             async with self.lock:
                 self.screens.discard(ws)
-                self.screen_sound.pop(ws, None)
-                await self._broadcast_admins()
+                if self.screen_sound.pop(ws, None) is not None:
+                    await self._broadcast_admins()
 
     async def serve_team(self, ws: WebSocket, token: str | None) -> None:
         await ws.accept()

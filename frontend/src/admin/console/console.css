@@ -49,7 +49,3 @@
 .light-timer .phase-timer.status-paused .phase-timer-label {
   color: var(--mantine-color-dimmed);
 }
-
-.light-timer .phase-timer.is-discuss .phase-timer-label {
-  color: #a67c00;
-}

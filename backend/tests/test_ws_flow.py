@@ -132,6 +132,11 @@ def test_screen_sound_status_reaches_admin(admin_client, settings):
         wait_view(adm, lambda v: v["screen_sound"] == "none")
         admin_client.post("/api/screen/auth", json={"key": screen_key(settings)})
         with admin_client.websocket_connect("/ws/screen") as screen:
+            recv_until(screen, "state")
+            # a screen counts only after its first report: connecting alone doesn't warn the host
+            adm.send_json({"type": "show_qr", "visible": True})
+            assert wait_view(adm, lambda v: v["state"]["qr_visible"])["screen_sound"] == "none"
+            screen.send_json({"type": "sound", "on": False})
             wait_view(adm, lambda v: v["screen_sound"] == "off")
             screen.send_json({"type": "sound", "on": True})
             wait_view(adm, lambda v: v["screen_sound"] == "on")

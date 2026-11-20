@@ -89,6 +89,7 @@ export function useBackgroundMusic(
     const p = player.current;
     if (!p) return Promise.resolve(true); // no audio support: nothing to unlock
     p.loop = false; // the silent clip is empty: don't loop it
+    applied.current = null; // the silent clip replaces the track: load the current music again once unlocked
     return unlockPlayer(p);
   }, []);
 }

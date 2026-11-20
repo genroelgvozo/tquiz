@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { RoundPublic, ScreenFree, ScreenJeopardy, ScreenQuestion, ScreenView } from "../src/lib/types.ts";
-import { planTransition, sceneOf, type Scene } from "../src/screen/scene.ts";
+import { planTransition, sceneOf, stageScene, type Scene } from "../src/screen/scene.ts";
 import {
   BLINK_MS,
   CONTENT_MS,
@@ -135,8 +135,27 @@ test("planTransition", () => {
   assert.deepEqual(planTransition(sceneOf(null), jq7), { entrance: "title", holdMs: 0 });
 });
 
-test("animations before a question starts fit into the server reveal", () => {
-  assert.ok(ZOOM_TOTAL_MS <= REVEAL_MS && TITLE_TOTAL_MS <= REVEAL_MS);
+test("stageScene: the standings overlay keeps the scene it covered until it clears", () => {
+  const intro1 = view({ stage: "intro", round: round(1) });
+  // «След. тур»: the table covers the next round's intro, the stage keeps the board it was showing
+  assert.equal(stageScene(board, { ...intro1, overlay: "leaderboard" }), board);
+  // «Показать заставку тура»: the intro comes in now, with its own entrance
+  assert.deepEqual(stageScene(board, intro1), { kind: "intro", key: "intro:1" });
+  assert.deepEqual(planTransition(board, stageScene(board, intro1)), { entrance: "fade", holdMs: 0 });
+  // the table opened and closed over the same scene: same key, nothing replays
+  const jqView = view({ stage: "jeopardy", jeopardy: { phase: "question", question_id: 7, question } });
+  assert.equal(stageScene(jq7, { ...jqView, overlay: "leaderboard" }), jq7);
+  assert.equal(stageScene(jq7, jqView).key, jq7.key);
+  assert.deepEqual(planTransition(jq7, stageScene(jq7, jqView)), { entrance: "none", holdMs: 0 });
+  // the first snapshot after loading, with the table already open: its own scene, drawn at once
+  assert.deepEqual(stageScene(null, { ...intro1, overlay: "leaderboard" }), { kind: "intro", key: "intro:1" });
+  assert.deepEqual(stageScene(null, null), { kind: "blank", key: "blank" });
+});
+
+test("animations before a question starts fit into the server reveal, with a margin", () => {
+  // a few frames to spare: the snapshot reaches the screen a little after the server started the reveal
+  assert.ok(ZOOM_TOTAL_MS <= REVEAL_MS - 90, `zoom ${ZOOM_TOTAL_MS} ms`);
+  assert.ok(TITLE_TOTAL_MS <= REVEAL_MS - 90, `title ${TITLE_TOTAL_MS} ms`);
 });
 
 test("question parts appear once the cell has expanded or the title has landed", () => {

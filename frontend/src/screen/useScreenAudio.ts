@@ -126,6 +126,7 @@ export function useScreenAudio(view: ScreenView | null, unlocked: boolean, onBlo
     const p = player.current;
     if (!p) return Promise.resolve(true); // no audio support: nothing to unlock
     const target = currentSrc.current;
+    lastSeq.current = null; // the silent clip replaces the track: a playing track resumes once unlocked
     const unlocked = unlockPlayer(p);
     void unlocked.finally(() => {
       if (target && p.src === SILENT_WAV) {

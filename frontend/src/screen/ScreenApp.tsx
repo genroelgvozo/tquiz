@@ -11,7 +11,7 @@ import { useSocket } from "../lib/socket";
 import type { ScreenView, ServerMessage } from "../lib/types";
 import { Backdrop } from "./Backdrop";
 import { variants } from "./motion";
-import { sceneOf } from "./scene";
+import { stageScene, type Scene } from "./scene";
 import { SceneStage } from "./SceneStage";
 import "./screen.css";
 import { SoundControls } from "./SoundControls";
@@ -177,11 +177,15 @@ export default function ScreenApp() {
   // The first snapshot after loading or reconnecting remounts the stage, so it is drawn at once, without animation.
   const [stageEpoch, setStageEpoch] = useState(0);
   const awaitingFirst = useRef(true);
+  // Under the standings overlay the stage keeps the scene, and the snapshot it is drawn from, that was showing when the
+  // overlay opened: a scene that changed under it (the next round's intro) plays its entrance once the overlay clears.
+  const stage = useRef<{ scene: Scene; view: ScreenView | null } | null>(null);
 
   const onMessage = useCallback((m: ServerMessage<ScreenView>) => {
     if (m.type !== "state") return;
     if (awaitingFirst.current) {
       awaitingFirst.current = false;
+      stage.current = null; // the first snapshot is drawn with its own scene, even under the overlay
       setStageEpoch((e) => e + 1);
     }
     setView(m.view);
@@ -191,6 +195,9 @@ export default function ScreenApp() {
     if (status !== "open") awaitingFirst.current = true;
   }, [status]);
   const now = useServerClock(view?.now);
+  const scene = stageScene(stage.current?.scene ?? null, view);
+  if (scene !== stage.current?.scene) stage.current = { scene, view };
+  const stageView = stage.current.view;
   const style = themeVars(view?.theme ?? DEFAULT_THEME) as React.CSSProperties;
   const setSound = useCallback((on: boolean) => {
     soundOn.current = on;
@@ -259,8 +266,8 @@ export default function ScreenApp() {
     <div className={`hall scr-root${view?.logo_url ? " scr-with-logo" : ""}`} style={style}>
       {/* mounted with the first snapshot, so the first picture is drawn at once */}
       {view && <Backdrop url={view.background_url} />}
-      <SceneStage key={stageEpoch} scene={sceneOf(view)}>
-        {(seq) => sceneContent(seq, view, now)}
+      <SceneStage key={stageEpoch} scene={scene}>
+        {(seq) => sceneContent(seq, stageView, now)}
       </SceneStage>
       <div className="scr-logo">
         <Logo url={view?.logo_url ?? null} />
