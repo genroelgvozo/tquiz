@@ -2,7 +2,7 @@ from app.game import scoring
 from app.game.commands import *  # noqa: F403
 from app.game.constants import REVEAL_SECONDS
 from app.game.views import TypingView, admin_view, screen_view, team_view
-from app.quizdata import media_ref
+from app.quizdata import Theme, media_ref
 from tests.factories import FakeClock, free_round, jeopardy_round, make_quiz, new_game, q, reveal
 
 SECRET_ANS = "СекретныйОтвет"
@@ -257,3 +257,48 @@ def test_screen_typing_view_only_for_live_typewriter_question():
     g.apply_admin(OpenCell(question_id=1))
     reveal(g, g.clock)
     assert screen_view(g, "u").jeopardy.typing is None
+
+
+NIGHT = Theme(bg="#101020", text="#EEEEEE", accent="#FFAA00", second="#3366FF")
+QBG = media_ref("1" * 32 + ".png", "image")
+QMUSIC = media_ref("2" * 32 + ".mp3", "audio")
+R1BG = media_ref("3" * 32 + ".png", "image")
+R1INTRO = media_ref("4" * 32 + ".mp3", "audio")
+R2BG = media_ref("5" * 32 + ".png", "image")
+R2INTRO = media_ref("6" * 32 + ".mp3", "audio")
+
+
+def appearance_game():
+    r1 = jeopardy_round(1, [("Кино", [q(1)])], background=R1BG, intro_music=R1INTRO)
+    r2 = free_round(2, [q(2)], background=R2BG, intro_music=R2INTRO)
+    r2.background = None
+    quiz = make_quiz([r1, r2], theme=NIGHT, background=QBG, lobby_music=QMUSIC)
+    return new_game(quiz)
+
+
+def test_theme_and_backgrounds_per_stage():
+    g = appearance_game()
+    g.join("А")
+    v = screen_view(g, "u")
+    assert v.theme == NIGHT and v.background_url == QBG.url and v.quiz_background_url == QBG.url
+    g.apply_admin(StartGame())
+    v = screen_view(g, "u")
+    assert v.stage == "intro" and v.background_url == R1BG.url and v.quiz_background_url == QBG.url
+    g.apply_admin(StartRound())
+    v = screen_view(g, "u")
+    assert v.stage == "jeopardy" and v.background_url == R1BG.url
+    g.state.stage = "intro"
+    g.state.round_index = 1
+    v = screen_view(g, "u")
+    assert v.background_url == QBG.url and v.quiz_background_url == QBG.url
+    team = g.state.teams[0].id
+    tv = team_view(g, team)
+    assert tv.theme == NIGHT
+    assert "/media/" not in tv.model_dump_json()
+
+
+def test_preload_includes_appearance_media():
+    g = appearance_game()
+    pre = screen_view(g, "u").preload
+    assert pre == [QBG.url, QMUSIC.url, R1BG.url, R1INTRO.url]
+    assert R2INTRO.url not in pre

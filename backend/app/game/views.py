@@ -19,7 +19,7 @@ from app.game.state import (
     Stage,
     Timer,
 )
-from app.quizdata import MediaRef, QuestionData, QuizData, RoundData
+from app.quizdata import MediaRef, QuestionData, QuizData, RoundData, Theme
 
 
 class TeamPublic(BaseModel):
@@ -126,6 +126,9 @@ class ScreenView(BaseModel):
     now: float
     quiz_title: str
     logo_url: str | None
+    theme: Theme
+    background_url: str | None
+    quiz_background_url: str | None
     stage: Stage
     join_url: str
     qr_visible: bool
@@ -163,6 +166,7 @@ class TeamFree(BaseModel):
 class TeamView(BaseModel):
     kind: Literal["team"] = "team"
     now: float
+    theme: Theme
     team: TeamPublic
     score: TeamScore | None
     stage: Stage
@@ -196,6 +200,7 @@ class AdminView(BaseModel):
     state: AdminState
     online_team_ids: list[str]
     undo_available: bool
+    screen_sound: Literal["none", "on", "off"]
 
 
 # ---------- helpers ----------
@@ -270,13 +275,39 @@ def _jeopardy_label(rnd: RoundData, question: QuestionData) -> str:
     return f"{cat.name if cat else ''} · {question.value}"
 
 
-def _preload(rnd: RoundData | None) -> list[str]:
-    if rnd is None:
-        return []
+def _url(ref: MediaRef | None) -> str | None:
+    return ref.url if ref else None
+
+
+def _background(game: Game) -> str | None:
+    quiz_bg = _url(game.quiz.background)
+    if game.state.stage in _IN_ROUND:
+        return _url(game.current_round().background) or quiz_bg
+    return quiz_bg
+
+
+def _preload(game: Game) -> list[str]:
     urls: list[str] = []
-    for question in rnd.all_questions():
-        if question.media and question.media.url not in urls:
-            urls.append(question.media.url)
+
+    def add(ref: MediaRef | None) -> None:
+        if ref and ref.url not in urls:
+            urls.append(ref.url)
+
+    rnd = _round(game)
+    if rnd is not None:
+        for question in rnd.all_questions():
+            add(question.media)
+    add(game.quiz.background)
+    add(game.quiz.lobby_music)
+    rounds = game.quiz.rounds
+    index = game.state.round_index
+    if 0 <= index < len(rounds):
+        add(rounds[index].background)
+        add(rounds[index].intro_music)
+        add(rounds[index].think_music)
+    if 0 <= index + 1 < len(rounds):
+        add(rounds[index + 1].background)
+        add(rounds[index + 1].intro_music)
     return urls
 
 
@@ -360,6 +391,9 @@ def screen_view(game: Game, join_url: str) -> ScreenView:
         now=game.now(),
         quiz_title=game.quiz.title,
         logo_url=game.quiz.logo.url if game.quiz.logo else None,
+        theme=game.quiz.theme,
+        background_url=_background(game),
+        quiz_background_url=_url(game.quiz.background),
         stage=st.stage,
         join_url=join_url,
         qr_visible=st.qr_visible,
@@ -368,7 +402,7 @@ def screen_view(game: Game, join_url: str) -> ScreenView:
         overlay=st.overlay,
         audio=st.audio,
         music=current_music(game),
-        preload=_preload(rnd),
+        preload=_preload(game),
         standings=_standings(game),
         jeopardy=_screen_jeopardy(game, rnd) if st.stage == "jeopardy" and st.jeopardy else None,
         free=_screen_free(game, rnd) if st.stage == "free" and st.free else None,
@@ -410,6 +444,7 @@ def team_view(game: Game, team_id: str) -> TeamView:
         )
     return TeamView(
         now=game.now(),
+        theme=game.quiz.theme,
         team=TeamPublic(id=team.id, name=team.name),
         score=_team_score(game, team),
         stage=st.stage,
@@ -419,7 +454,9 @@ def team_view(game: Game, team_id: str) -> TeamView:
     )
 
 
-def admin_view(game: Game, join_url: str, online: set[str]) -> AdminView:
+def admin_view(
+    game: Game, join_url: str, online: set[str], screen_sound: Literal["none", "on", "off"] = "none"
+) -> AdminView:
     st = game.state
     names = {t.id: t.name for t in st.teams}
     state = AdminState(
@@ -447,4 +484,5 @@ def admin_view(game: Game, join_url: str, online: set[str]) -> AdminView:
         state=state,
         online_team_ids=[t.id for t in st.teams if t.id in online],
         undo_available=bool(st.undo_stack),
+        screen_sound=screen_sound,
     )

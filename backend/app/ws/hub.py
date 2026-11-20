@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+from collections.abc import Iterable
+from typing import Literal
 
 from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
@@ -23,6 +25,13 @@ TICK_INTERVAL = 0.2
 UNAUTHORIZED = 4401
 
 
+def screen_sound_status(flags: Iterable[bool]) -> Literal["none", "on", "off"]:
+    flags = list(flags)
+    if not flags:
+        return "none"
+    return "on" if any(flags) else "off"
+
+
 class Hub:
     def __init__(self, settings: Settings, db: Engine):
         self.settings = settings
@@ -31,6 +40,7 @@ class Hub:
         self.lock = asyncio.Lock()
         self.admins: set[WebSocket] = set()
         self.screens: set[WebSocket] = set()
+        self.screen_sound: dict[WebSocket, bool] = {}  # screen socket -> its sound is on
         self.teams: dict[str, WebSocket] = {}  # team_id -> socket of its (single) phone
         self.unjoined: set[WebSocket] = set()  # team sockets not bound to a team
         self.pending: dict[str, WebSocket] = {}  # rejoin request_id -> waiting socket
@@ -72,7 +82,7 @@ class Hub:
             self.game = Game.new(quiz)
             store.save_game(self.db, self.game)
             self._unbind_all_teams()
-            await self._send_many(self.unjoined, {"type": "need_join"})
+            await self._send_many(self.unjoined, self._need_join_message())
             await self._broadcast()
 
     async def stop_game(self) -> None:
@@ -124,15 +134,24 @@ class Hub:
         await ws.accept()
         async with self.lock:
             self.screens.add(ws)
+            self.screen_sound[ws] = False
             await self._send(ws, self._screen_message())
+            await self._broadcast_admins()
         try:
             while True:
-                await self._receive(ws)  # screen sends only heartbeats
+                data = await self._receive(ws)
+                if data is not None and data.get("type") == "sound":
+                    async with self.lock:
+                        if ws in self.screen_sound:
+                            self.screen_sound[ws] = data.get("on") is True
+                            await self._broadcast_admins()
         except WebSocketDisconnect:
             pass
         finally:
             async with self.lock:
                 self.screens.discard(ws)
+                self.screen_sound.pop(ws, None)
+                await self._broadcast_admins()
 
     async def serve_team(self, ws: WebSocket, token: str | None) -> None:
         await ws.accept()
@@ -144,7 +163,7 @@ class Hub:
                 team = self.game.team_by_token(token or "")
                 if team is None:
                     self.unjoined.add(ws)
-                    await self._send(ws, {"type": "need_join"})
+                    await self._send(ws, self._need_join_message())
                 else:
                     await self._bind(team.id, ws)
                     await self._send(ws, self._team_message(team.id))
@@ -222,7 +241,7 @@ class Hub:
                 for s in sockets:
                     if s is not None:
                         self.unjoined.add(s)
-                        await self._send(s, {"type": "need_join"})
+                        await self._send(s, self._need_join_message())
 
             self._save()
             await self._broadcast()
@@ -243,7 +262,7 @@ class Hub:
                 return
             team_id = next((tid for tid, s in self.teams.items() if s is ws), None)
             if team_id is None:
-                await self._send(ws, {"type": "need_join"})
+                await self._send(ws, self._need_join_message())
                 return
             try:
                 game.apply_team(team_id, cmd)
@@ -303,13 +322,21 @@ class Hub:
     def _admin_message(self) -> dict:
         if self.game is None:
             return {"type": "state", "view": None}
-        view = admin_view(self.game, self.join_url, set(self.teams))
+        view = admin_view(
+            self.game, self.join_url, set(self.teams), screen_sound_status(self.screen_sound.values())
+        )
         return {"type": "state", "view": view.model_dump(mode="json")}
 
     def _screen_message(self) -> dict:
         if self.game is None:
             return {"type": "state", "view": None}
         return {"type": "state", "view": screen_view(self.game, self.join_url).model_dump(mode="json")}
+
+    def _need_join_message(self) -> dict:
+        message: dict = {"type": "need_join"}
+        if self.game is not None:
+            message["theme"] = self.game.quiz.theme.model_dump(mode="json")
+        return message
 
     def _team_message(self, team_id: str) -> dict:
         return {"type": "state", "view": team_view(self.game, team_id).model_dump(mode="json")}

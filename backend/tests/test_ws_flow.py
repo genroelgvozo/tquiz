@@ -2,7 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from app.auth import screen_key
 from app.main import create_app
+from app.ws.hub import screen_sound_status
 
 
 def build_quiz(c):
@@ -121,3 +123,29 @@ def test_state_survives_restart(settings, admin_client):
     with TestClient(create_app(settings)) as c2:
         with c2.websocket_connect(f"/ws/team?token={token}") as t:
             assert recv_until(t, "state")["view"]["team"]["name"] == "А"
+
+
+def test_screen_sound_status_reaches_admin(admin_client, settings):
+    qid = build_quiz(admin_client)
+    admin_client.post("/api/game/start", json={"quiz_id": qid})
+    with admin_client.websocket_connect("/ws/admin") as adm:
+        wait_view(adm, lambda v: v["screen_sound"] == "none")
+        admin_client.post("/api/screen/auth", json={"key": screen_key(settings)})
+        with admin_client.websocket_connect("/ws/screen") as screen:
+            wait_view(adm, lambda v: v["screen_sound"] == "off")
+            screen.send_json({"type": "sound", "on": True})
+            wait_view(adm, lambda v: v["screen_sound"] == "on")
+        wait_view(adm, lambda v: v["screen_sound"] == "none")
+
+
+def test_need_join_carries_theme(admin_client):
+    qid = build_quiz(admin_client)
+    admin_client.post("/api/game/start", json={"quiz_id": qid})
+    with admin_client.websocket_connect("/ws/team") as t:
+        assert recv_until(t, "need_join")["theme"]["bg"] == "#FBF5EA"
+
+
+def test_screen_sound_status_any_on():
+    assert screen_sound_status([]) == "none"
+    assert screen_sound_status([False, True]) == "on"
+    assert screen_sound_status([False]) == "off"
