@@ -2,7 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { RoundPublic, ScreenFree, ScreenJeopardy, ScreenQuestion, ScreenView } from "../src/lib/types.ts";
 import { planTransition, sceneOf, type Scene } from "../src/screen/scene.ts";
-import { BLINK_MS, REVEAL_MS, TITLE_TOTAL_MS, ZOOM_TOTAL_MS } from "../src/screen/motion.ts";
+import {
+  BLINK_MS,
+  CONTENT_MS,
+  partDelays,
+  REVEAL_MS,
+  TITLE_FLY_MS,
+  TITLE_TOTAL_MS,
+  ZOOM_MS,
+  ZOOM_TOTAL_MS,
+} from "../src/screen/motion.ts";
 
 type Overrides = Partial<Omit<ScreenView, "jeopardy" | "free">> & {
   jeopardy?: Partial<ScreenJeopardy>;
@@ -128,4 +137,14 @@ test("planTransition", () => {
 
 test("animations before a question starts fit into the server reveal", () => {
   assert.ok(ZOOM_TOTAL_MS <= REVEAL_MS && TITLE_TOTAL_MS <= REVEAL_MS);
+});
+
+test("question parts appear once the cell has expanded or the title has landed", () => {
+  assert.deepEqual(partDelays("zoom"), { head: ZOOM_MS, body: ZOOM_MS });
+  // the header is where the flying title lands, so it is there at once; the body follows the flight
+  assert.deepEqual(partDelays("title"), { head: null, body: TITLE_FLY_MS });
+  assert.deepEqual(partDelays("fade"), { head: null, body: null }); // with the scene's own crossfade
+  assert.deepEqual(partDelays("none"), { head: null, body: null });
+  // blink, expand, then the text: all before the question starts
+  assert.ok(4 * BLINK_MS + ZOOM_MS + CONTENT_MS <= REVEAL_MS);
 });

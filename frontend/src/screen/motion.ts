@@ -1,6 +1,7 @@
 // Hall screen animations: timings and Motion variants as plain data, separate from the scenes' markup.
 // Only `import type` here: tests load this file under node --experimental-strip-types without Motion or React.
-import type { Variants } from "motion/react";
+import type { Transition, Variants } from "motion/react";
+import type { Entrance } from "./scene";
 
 /** Server reveal duration (backend REVEAL_SECONDS): a question "starts" after it, so the animations before it fit in. */
 export const REVEAL_MS = 1200;
@@ -23,6 +24,9 @@ export const FADE_IN_MS = 300;
 export const FADE_OUT_MS = 250;
 
 const sec = (ms: number) => ms / 1000;
+
+/** The picked cell expanding and the big title flying into the header: quick start, soft landing. */
+const MOVE_EASE = [0.5, 0, 0.2, 1] as const;
 
 // Every set uses the labels hidden → visible → exit.
 
@@ -69,4 +73,109 @@ const staggerPop = {
   exit: { opacity: 0, transition: { duration: sec(FADE_OUT_MS), ease: "easeIn" } },
 } satisfies Variants;
 
-export const variants = { fade, rise, pop, slide, staggerPop };
+/** Board cells: a wave of small pops when the board comes in. No exit: the board leaves as a whole. */
+const boardCell = { hidden: staggerPop.hidden, visible: staggerPop.visible } satisfies Variants;
+
+/**
+ * The scene the picked cell expands into: there at once, its expanding cell draws the entrance.
+ * The board under it goes when the cell has covered the screen.
+ */
+const expandScene = {
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 },
+  exit: { opacity: 0, transition: { delay: sec(ZOOM_MS), duration: 0 } },
+} satisfies Variants;
+
+/**
+ * The picked cell (it shares the cell's layoutId) grows from its place to the whole screen while its colour goes
+ * from the accent to the background, then it fades away over the question appearing under it.
+ */
+const cellExpand = {
+  hidden: { backgroundColor: "var(--accent)", opacity: 1 },
+  visible: { backgroundColor: "var(--bg)", opacity: 0 },
+} satisfies Variants;
+export const cellExpandTransition = {
+  layout: { duration: sec(ZOOM_MS), ease: MOVE_EASE },
+  backgroundColor: { duration: sec(ZOOM_MS), ease: MOVE_EASE },
+  opacity: { delay: sec(ZOOM_MS), duration: sec(CONTENT_MS), ease: "easeOut" },
+} satisfies Transition;
+
+/**
+ * A part of a question scene (the header, the body) appearing on its own after the scene's entrance.
+ * `custom` is the delay in ms after the part mounts (see partDelays), or null: the part comes with the scene itself.
+ */
+const part = {
+  hidden: (delay: number | null) => (delay === null ? {} : { opacity: 0, y: "3%" }),
+  visible: (delay: number | null) => ({
+    opacity: 1,
+    y: 0,
+    transition: delay === null ? { duration: 0 } : { duration: sec(CONTENT_MS), delay: sec(delay), ease: "easeOut" },
+  }),
+} satisfies Variants;
+
+/** When the header and the body of a question appear, in ms after they mount, by how the scene came in. */
+export function partDelays(entrance: Entrance): { head: number | null; body: number | null } {
+  switch (entrance) {
+    case "zoom":
+      return { head: ZOOM_MS, body: ZOOM_MS };
+    case "title":
+      // the header is where the big title lands, so it is there at once; the body follows the flight
+      return { head: null, body: TITLE_FLY_MS };
+    default:
+      return { head: null, body: null };
+  }
+}
+
+/** The big title in the centre: pops up, then (TitleIntro) flies into the header. */
+const bigTitle = {
+  hidden: { opacity: 0, scale: 0.4 },
+  visible: {
+    opacity: [0, 1, 1],
+    scale: [0.4, 1.1, 1],
+    transition: { duration: sec(TITLE_POP_MS), times: [0, 0.7, 1], ease: "easeOut" },
+  },
+} satisfies Variants;
+export const titleFlyTransition = { layout: { duration: sec(TITLE_FLY_MS), ease: MOVE_EASE } } satisfies Transition;
+
+/** The question text steps back (from its top left corner) while the answer is shown. */
+const textStep = {
+  normal: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: "easeOut" } },
+  dim: { opacity: 0.55, scale: 0.9, transition: { duration: 0.3, ease: "easeOut" } },
+} satisfies Variants;
+
+/** «Отвечает: …»: pops up, slides aside when it goes. */
+const who = {
+  hidden: pop.hidden,
+  visible: { ...pop.visible, transition: { ...pop.visible.transition, duration: 0.45 } },
+  exit: { opacity: 0, x: "12%", transition: { duration: 0.25, ease: "easeIn" } },
+} satisfies Variants;
+
+/** «Секрет!»: pops up, then wobbles a little. */
+const secret = {
+  hidden: { opacity: 0, scale: 0.3, rotate: 0 },
+  visible: {
+    opacity: [0, 1, 1, 1],
+    scale: [0.3, 1.15, 0.97, 1],
+    rotate: [0, -6, 5, -3, 0],
+    transition: {
+      default: { duration: 0.6, times: [0, 0.6, 0.85, 1], ease: "easeOut" },
+      rotate: { delay: 0.55, duration: 0.5, ease: "easeInOut" },
+    },
+  },
+} satisfies Variants;
+
+export const variants = {
+  fade,
+  rise,
+  pop,
+  slide,
+  staggerPop,
+  boardCell,
+  expandScene,
+  cellExpand,
+  part,
+  bigTitle,
+  textStep,
+  who,
+  secret,
+};

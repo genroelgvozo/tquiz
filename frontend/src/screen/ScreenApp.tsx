@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { BuzzBar } from "../components/BuzzBar";
 import { Logo } from "../components/Logo";
@@ -9,6 +10,7 @@ import { DEFAULT_THEME, themeVars } from "../lib/theme";
 import { useSocket } from "../lib/socket";
 import type { ScreenView, ServerMessage } from "../lib/types";
 import { Backdrop } from "./Backdrop";
+import { variants } from "./motion";
 import { sceneOf } from "./scene";
 import { SceneStage } from "./SceneStage";
 import "./screen.css";
@@ -16,11 +18,12 @@ import { SoundControls } from "./SoundControls";
 import { useBackgroundMusic } from "./useBackgroundMusic";
 import type { SceneSequence } from "./useSceneSequence";
 import { useBuzzBeep, useScreenAudio } from "./useScreenAudio";
-import BoardView from "./views/BoardView";
+import BoardView, { CellExpand } from "./views/BoardView";
 import IntroView from "./views/IntroView";
 import LeaderboardView from "./views/LeaderboardView";
 import LobbyView from "./views/LobbyView";
 import QuestionView from "./views/QuestionView";
+import { TitleIntro } from "./views/TitleIntro";
 import WinnerView from "./views/WinnerView";
 
 /** Exchanges ?key=… for a cookie, then strips it from the address bar. */
@@ -44,7 +47,8 @@ function useScreenAuth(): boolean {
 }
 
 /** The content of the shown scene, drawn from the latest snapshot (during the cell blink the board is still shown). */
-function sceneContent({ shown }: SceneSequence, view: ScreenView | null, now: () => number): ReactNode {
+function sceneContent(seq: SceneSequence, view: ScreenView | null, now: () => number): ReactNode {
+  const { shown, entrance, blinkId } = seq;
   const j = view?.jeopardy;
   const f = view?.free;
   if (view) {
@@ -57,34 +61,58 @@ function sceneContent({ shown }: SceneSequence, view: ScreenView | null, now: ()
       case "winner":
         return <WinnerView standings={view.standings} />;
       case "board":
-        if (j) return <BoardView j={j} teams={view.teams} />;
+        if (j) return <BoardView j={j} teams={view.teams} blinkId={blinkId} />;
         break;
       case "secret":
         if (j?.question)
           return (
             <div className="scr-center">
               <div className="scr-tag-inline scr-muted">{j.question.title}</div>
-              <div className="scr-h1 scr-accent">Секрет!</div>
+              <motion.div className="scr-h1 scr-accent" variants={variants.secret}>
+                Секрет!
+              </motion.div>
             </div>
           );
         break;
       case "jq":
         if (j?.question) {
-          const answering = view.teams.find((t) => t.id === j.answering_team_id);
+          const answering = j.phase === "question" ? view.teams.find((t) => t.id === j.answering_team_id) : undefined;
           return (
-            <QuestionView
-              q={j.question}
-              head={{ main: j.question.title }}
-              dimText={j.phase === "answer"}
-              footer={
-                <>
-                  {j.phase === "question" && j.buttons === "bar" && j.bar_ends_at !== null && (
-                    <BuzzBar endsAt={j.bar_ends_at} seconds={j.bar_seconds} now={now} />
-                  )}
-                  {answering && j.phase === "question" && <div className="scr-who">Отвечает: {answering.name}</div>}
-                </>
-              }
-            />
+            <>
+              <TitleIntro title={j.question.title} layoutId="scene-head" play={entrance === "title"}>
+                <QuestionView
+                  q={j.question}
+                  head={{ main: j.question.title, layoutId: "scene-head" }}
+                  entrance={entrance}
+                  typing={j.typing}
+                  now={now}
+                  dimText={j.phase === "answer"}
+                  footer={
+                    <>
+                      {j.phase === "question" && j.buttons === "bar" && j.bar_ends_at !== null && (
+                        <BuzzBar endsAt={j.bar_ends_at} seconds={j.bar_seconds} now={now} />
+                      )}
+                      {/* popLayout: the leaving plate does not push the next team's one aside */}
+                      <AnimatePresence initial={false} mode="popLayout">
+                        {answering && (
+                          <motion.div
+                            key={answering.id}
+                            className="scr-who"
+                            variants={variants.who}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                          >
+                            Отвечает: {answering.name}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
+                  }
+                />
+              </TitleIntro>
+              {entrance === "zoom" && <CellExpand questionId={shown.questionId} />}
+            </>
           );
         }
         break;

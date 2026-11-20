@@ -1,11 +1,22 @@
 import { Alert, Box, Button, Grid, Group, Paper, Select, Stack, Text } from "@mantine/core";
-import type { QuestionData } from "../../lib/types";
+import type { ReactNode } from "react";
+import type { QuestionData, TypingView } from "../../lib/types";
 import { layoutBoard } from "../../lib/board";
+import { useServerClock, useTicker } from "../../lib/clock";
+import { typedChars } from "../../lib/typing";
 import { SectionLabel } from "../ui";
 import { AudioControls, QuestionBox } from "./common";
 import type { PanelProps } from "./types";
 
+/** The question while the screen is printing it: redrawn as the printed part grows. */
+function PrintingQuestionBox(props: { text: string; answer: ReactNode; typing: TypingView; now: () => number }) {
+  useTicker(100);
+  const typed = typedChars(props.typing, props.now(), props.text.length);
+  return <QuestionBox text={props.text} answer={props.answer} typed={typed} />;
+}
+
 export default function JeopardyPanel({ view, send }: PanelProps) {
+  const now = useServerClock(view.now);
   const round = view.quiz.rounds[view.state.round_index];
   const j = view.state.jeopardy;
   if (!round || !j) return null;
@@ -24,6 +35,11 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
     }
   }
   const hasAudio = current?.media?.kind === "audio";
+  // the screen prints a plain question letter by letter: the host sees how far it got
+  const typing: TypingView | null =
+    round.typewriter && j.phase === "question" && current && !current.is_secret
+      ? { base: j.typed_base, since: j.typing_since, speed: round.type_speed }
+      : null;
   const canOpen = j.phase === "board" || j.phase === "answer";
   const firstAt = j.buzzes[0]?.at ?? 0;
 
@@ -83,7 +99,15 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
                 {currentCat} · {current.value} {current.is_secret && "· секрет"}
               </SectionLabel>
               <Stack gap="sm">
-                <QuestionBox text={current.text} answer={current.answer || "—"} />
+                {typing && typing.since !== null ? (
+                  <PrintingQuestionBox text={current.text} answer={current.answer || "—"} typing={typing} now={now} />
+                ) : (
+                  <QuestionBox
+                    text={current.text}
+                    answer={current.answer || "—"}
+                    typed={typing ? typedChars(typing, now(), current.text.length) : undefined}
+                  />
+                )}
 
                 {hasAudio && <AudioControls send={send} />}
 
@@ -129,6 +153,13 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
                           </Button>
                         </Group>
                       </>
+                    ) : j.starts_at !== null ? (
+                      <Group gap="sm">
+                        <Text>Вопрос раскрывается на экране…</Text>
+                        <Button variant="default" onClick={() => send({ type: "open_buttons" })}>
+                          Открыть кнопки сейчас
+                        </Button>
+                      </Group>
                     ) : j.buttons === "bar" ? (
                       <Group gap="sm">
                         <Text>Полоска идёт…</Text>

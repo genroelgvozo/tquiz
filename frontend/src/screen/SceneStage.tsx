@@ -1,15 +1,17 @@
-import { AnimatePresence, LayoutGroup, motion, type Variants } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion, type TargetAndTransition, type Variants } from "motion/react";
 import type { ReactNode } from "react";
 import { variants } from "./motion";
 import type { Entrance, Scene } from "./scene";
 import { useSceneSequence, type SceneSequence } from "./useSceneSequence";
 
 // How a scene comes in and how the previous one leaves, by the entrance of the new one.
-// zoom and title are plain crossfades for now (the cell expansion and the flying title come later).
-const SCENE_VARIANTS: Record<Entrance, typeof variants.fade> = {
+// zoom: the new scene is there at once and its expanding cell covers the board, which then goes.
+// title: a crossfade; the big title pops up inside the new scene (TitleIntro).
+type SceneSet = Record<"hidden" | "visible" | "exit", TargetAndTransition>;
+const SCENE_VARIANTS: Record<Entrance, SceneSet> = {
   none: variants.fade,
   fade: variants.fade,
-  zoom: variants.fade,
+  zoom: variants.expandScene,
   title: variants.fade,
 };
 
