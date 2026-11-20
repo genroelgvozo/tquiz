@@ -32,8 +32,8 @@ def free_round(id: int, questions: list[QuestionData], **settings) -> RoundData:
     return RoundData(id=id, title=f"Тур {id}", kind="free", questions=questions, **settings)
 
 
-def make_quiz(rounds: list[RoundData], logo: MediaRef | None = None) -> QuizData:
-    return QuizData(id=1, title="Квиз", logo=logo, rounds=rounds)
+def make_quiz(rounds: list[RoundData], logo: MediaRef | None = None, **kw) -> QuizData:
+    return QuizData(id=1, title="Квиз", logo=logo, rounds=rounds, **kw)
 
 
 def new_game(quiz: QuizData, clock=None) -> Game:

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.game import freeinput, jeopardy, scoring
 from app.game.engine import Game
 from app.game.jeopardy import BuzzerStatus
+from app.game.music import MusicNow, current_music
 from app.game.state import (
     Answer,
     AudioCmd,
@@ -132,6 +133,7 @@ class ScreenView(BaseModel):
     round: RoundPublic | None
     overlay: Literal["leaderboard"] | None
     audio: AudioCmd
+    music: MusicNow | None
     preload: list[str]
     standings: Standings
     jeopardy: ScreenJeopardy | None
@@ -182,6 +184,8 @@ class AdminState(BaseModel):
     free: FreeState | None
     overlay: Literal["leaderboard"] | None
     audio: AudioCmd
+    music: MusicNow | None
+    music_paused: bool
 
 
 class AdminView(BaseModel):
@@ -363,6 +367,7 @@ def screen_view(game: Game, join_url: str) -> ScreenView:
         round=_round_public(game),
         overlay=st.overlay,
         audio=st.audio,
+        music=current_music(game),
         preload=_preload(rnd),
         standings=_standings(game),
         jeopardy=_screen_jeopardy(game, rnd) if st.stage == "jeopardy" and st.jeopardy else None,
@@ -432,6 +437,8 @@ def admin_view(game: Game, join_url: str, online: set[str]) -> AdminView:
         free=st.free,
         overlay=st.overlay,
         audio=st.audio,
+        music=current_music(game),
+        music_paused=st.music_paused,
     )
     return AdminView(
         now=game.now(),

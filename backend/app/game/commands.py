@@ -74,6 +74,10 @@ class AudioControl(_Cmd):
     action: Literal["play", "pause", "restart"]
 
 
+class MusicToggle(_Cmd):
+    type: Literal["music_toggle"] = "music_toggle"
+
+
 # ---------- host: jeopardy ----------
 
 
@@ -183,7 +187,7 @@ class ReviewShowAnswer(_Cmd):
 AdminCommand = Annotated[
     Union[
         ShowQr, StartGame, StartRound, NextRound, FinishGame, RenameTeam, DeleteTeam,
-        ApproveRejoin, RejectRejoin, AdjustScore, Undo, SetOverlay, AudioControl,
+        ApproveRejoin, RejectRejoin, AdjustScore, Undo, SetOverlay, AudioControl, MusicToggle,
         SetChooser, OpenCell, SetSecretRecipient, OpenButtons, Judge, Reveal, ToBoard,
         OpenQuestion, TimerStart, TimerPause, TimerResume, TimerAdd, TimerFinish,
         StartReview, ReviewGoto, ReviewShowAnswer, Mark,

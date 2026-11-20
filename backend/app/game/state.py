@@ -95,4 +95,7 @@ class GameState(BaseModel):
     free: FreeState | None = None
     overlay: Literal["leaderboard"] | None = None
     audio: AudioCmd = Field(default_factory=AudioCmd)
+    # background music: seq changes when the track must restart; paused is the host toggle
+    music_seq: int = 0
+    music_paused: bool = False
     undo_stack: list[dict] = Field(default_factory=list)

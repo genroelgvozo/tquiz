@@ -8,7 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.game import freeinput, jeopardy, scoring
+from app.game import freeinput, jeopardy, music, scoring
 from app.game.commands import (
     AdjustScore,
     ApproveRejoin,
@@ -95,6 +95,10 @@ class Game:
     def audio_for(self, question: QuestionData) -> None:
         has_audio = question.media is not None and question.media.kind == "audio"
         self.set_audio("play" if has_audio else "stop")
+
+    def new_music_context(self) -> None:
+        self.state.music_seq += 1
+        self.state.music_paused = False
 
     def clean_name(self, name: str, except_team_id: str | None = None) -> str:
         cleaned = " ".join(name.split())
@@ -185,6 +189,7 @@ def _start_game(game: Game, cmd: StartGame) -> None:
     game.state.round_index = 0
     game.state.qr_visible = False
     game.state.overlay = None
+    game.new_music_context()
     game.state.undo_stack = []
 
 
@@ -214,6 +219,7 @@ def _next_round(game: Game, cmd: NextRound) -> None:
     game.state.jeopardy = None
     game.state.free = None
     game.state.overlay = "leaderboard" if game.state.closed_rounds else None
+    game.new_music_context()
     game.state.undo_stack = []
     game.set_audio("stop")
 
@@ -318,6 +324,7 @@ HANDLERS: dict[type, Callable] = {
     AudioControl: _audio,
     **jeopardy.HANDLERS,
     **freeinput.HANDLERS,
+    **music.HANDLERS,
 }
 
 TEAM_HANDLERS: dict[type, Callable] = {**jeopardy.TEAM_HANDLERS, **freeinput.TEAM_HANDLERS}

@@ -115,6 +115,7 @@ def _open(game: "Game", index: int) -> None:
     if question.id not in free.opened:
         free.opened.append(question.id)
     game.audio_for(question)
+    game.new_music_context()
 
 
 # ---------- lifecycle ----------
