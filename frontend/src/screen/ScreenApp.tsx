@@ -23,6 +23,8 @@ import IntroView from "./views/IntroView";
 import LeaderboardView from "./views/LeaderboardView";
 import LobbyView from "./views/LobbyView";
 import QuestionView from "./views/QuestionView";
+import ReviewView from "./views/ReviewView";
+import { HEAD_LAYOUT_ID } from "./views/SceneHeader";
 import { TitleIntro } from "./views/TitleIntro";
 import WinnerView from "./views/WinnerView";
 
@@ -79,10 +81,10 @@ function sceneContent(seq: SceneSequence, view: ScreenView | null, now: () => nu
           const answering = j.phase === "question" ? view.teams.find((t) => t.id === j.answering_team_id) : undefined;
           return (
             <>
-              <TitleIntro title={j.question.title} layoutId="scene-head" play={entrance === "title"}>
+              <TitleIntro title={j.question.title} layoutId={HEAD_LAYOUT_ID} play={entrance === "title"}>
                 <QuestionView
                   q={j.question}
-                  head={{ main: j.question.title, layoutId: "scene-head" }}
+                  head={{ main: j.question.title, layoutId: HEAD_LAYOUT_ID }}
                   entrance={entrance}
                   typing={j.typing}
                   now={now}
@@ -119,18 +121,18 @@ function sceneContent(seq: SceneSequence, view: ScreenView | null, now: () => nu
       case "free":
         if (f)
           return (
-            <QuestionView
-              q={f.question}
-              head={{ main: `Вопрос ${f.number}`, tail: ` из ${f.total}` }}
-              footer={<PhaseTimerBar timer={f.timer} now={now} />}
-            />
+            <TitleIntro title={`Вопрос ${f.number}`} layoutId={HEAD_LAYOUT_ID} play={entrance === "title"}>
+              <QuestionView
+                q={f.question}
+                head={{ main: `Вопрос ${f.number}`, tail: ` из ${f.total}`, layoutId: HEAD_LAYOUT_ID }}
+                entrance={entrance}
+                footer={<PhaseTimerBar timer={f.timer} now={now} />}
+              />
+            </TitleIntro>
           );
         break;
       case "review":
-        if (f)
-          return (
-            <QuestionView q={f.question} head={{ main: "Правильные ответы", tail: ` · вопрос ${f.number} из ${f.total}` }} />
-          );
+        if (f) return <ReviewView free={f} play={entrance === "title"} />;
         break;
     }
   }

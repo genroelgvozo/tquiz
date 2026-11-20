@@ -113,16 +113,19 @@ const part = {
   }),
 } satisfies Variants;
 
-/** When the header and the body of a question appear, in ms after they mount, by how the scene came in. */
-export function partDelays(entrance: Entrance): { head: number | null; body: number | null } {
+/**
+ * When the header, its muted tail and the body of a question appear, in ms after they mount, by how the scene came in.
+ * The tail is inside the header: null means it comes with the header.
+ */
+export function partDelays(entrance: Entrance): { head: number | null; tail: number | null; body: number | null } {
   switch (entrance) {
     case "zoom":
-      return { head: ZOOM_MS, body: ZOOM_MS };
+      return { head: ZOOM_MS, tail: null, body: ZOOM_MS };
     case "title":
-      // the header is where the big title lands, so it is there at once; the body follows the flight
-      return { head: null, body: TITLE_FLY_MS };
+      // the header is where the big title lands, so it is there at once; its tail and the body follow the flight
+      return { head: null, tail: TITLE_FLY_MS, body: TITLE_FLY_MS };
     default:
-      return { head: null, body: null };
+      return { head: null, tail: null, body: null };
   }
 }
 

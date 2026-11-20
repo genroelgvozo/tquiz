@@ -72,9 +72,19 @@
   font-weight: 800;
 }
 
+/* a box of its own so a new tail can crossfade with the old one in place; pre keeps the tail's leading space */
 .scr-head-tail {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  white-space: pre;
   color: var(--muted);
   font-weight: 500;
+}
+
+/* inline-block: measured with its full line height when the leaving tail is lifted out (AnimatePresence popLayout) */
+.scr-head-tail > span {
+  display: inline-block;
 }
 
 /* the big title of a new scene in the centre before it flies into the header */
@@ -273,6 +283,15 @@
   min-height: 0;
 }
 
+/* review: holds the question body sliding out and the next one sliding in; the leaving one is placed against it */
+.scr-q-slides {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .scr-tag-inline {
   font-size: 1.1em;
 }
@@ -334,10 +353,48 @@
 }
 
 .scr-options {
-  font-size: 1.5em;
-  line-height: 1.6;
+  list-style: none;
   margin: 0;
-  padding-left: 1.6em;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15em;
+  font-size: 1.5em;
+  line-height: 1.5;
+}
+
+/* the padding is room for the highlight; the negative margin keeps the letters in line with the question text */
+.scr-options li {
+  margin-left: -0.4em;
+  padding: 0 0.4em;
+  border-radius: 0.3em;
+  transition:
+    background-color 0.4s,
+    color 0.4s,
+    opacity 0.4s;
+}
+
+.scr-opt-letter {
+  margin-right: 0.5em;
+  color: var(--accent);
+  font-weight: 800;
+  transition: color 0.4s;
+}
+
+/* the answer is shown: the right option on the accent, the rest fade */
+.scr-options.marked li {
+  opacity: 0.45;
+}
+
+.scr-options.marked li.correct {
+  opacity: 1;
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.scr-options.marked li.correct .scr-opt-letter {
+  color: var(--on-accent);
 }
 
 .scr-answer {

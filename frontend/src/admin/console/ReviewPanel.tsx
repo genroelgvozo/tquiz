@@ -2,7 +2,10 @@ import { Button, Group, Paper, Stack, Text } from "@mantine/core";
 import { QuestionBox } from "./common";
 import type { PanelProps } from "./types";
 
-/** Review only drives the hall screen; marks live in the check table. */
+/**
+ * Review only drives the hall screen: the arrows show a question without its answer, «Показать ответ» adds it.
+ * Marks live in the check table.
+ */
 export default function ReviewPanel({ view, send }: PanelProps) {
   const round = view.quiz.rounds[view.state.round_index];
   const free = view.state.free;
@@ -23,7 +26,7 @@ export default function ReviewPanel({ view, send }: PanelProps) {
             ←
           </Button>
           <Text fw={700}>
-            На экране: ответ на вопрос {free.review_index + 1} / {total}
+            На экране: вопрос {free.review_index + 1} / {total} · {free.answer_shown ? "с ответом" : "без ответа"}
           </Text>
           <Button
             variant="default"
@@ -31,6 +34,9 @@ export default function ReviewPanel({ view, send }: PanelProps) {
             onClick={() => send({ type: "review_goto", index: free.review_index + 1 })}
           >
             →
+          </Button>
+          <Button disabled={free.answer_shown} onClick={() => send({ type: "review_show_answer" })}>
+            Показать ответ
           </Button>
         </Group>
 

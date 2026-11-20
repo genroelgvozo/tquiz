@@ -140,11 +140,12 @@ test("animations before a question starts fit into the server reveal", () => {
 });
 
 test("question parts appear once the cell has expanded or the title has landed", () => {
-  assert.deepEqual(partDelays("zoom"), { head: ZOOM_MS, body: ZOOM_MS });
-  // the header is where the flying title lands, so it is there at once; the body follows the flight
-  assert.deepEqual(partDelays("title"), { head: null, body: TITLE_FLY_MS });
-  assert.deepEqual(partDelays("fade"), { head: null, body: null }); // with the scene's own crossfade
-  assert.deepEqual(partDelays("none"), { head: null, body: null });
+  // the header's tail comes with the header itself
+  assert.deepEqual(partDelays("zoom"), { head: ZOOM_MS, tail: null, body: ZOOM_MS });
+  // the header is where the flying title lands, so it is there at once; its tail and the body follow the flight
+  assert.deepEqual(partDelays("title"), { head: null, tail: TITLE_FLY_MS, body: TITLE_FLY_MS });
+  assert.deepEqual(partDelays("fade"), { head: null, tail: null, body: null }); // with the scene's own crossfade
+  assert.deepEqual(partDelays("none"), { head: null, tail: null, body: null });
   // blink, expand, then the text: all before the question starts
   assert.ok(4 * BLINK_MS + ZOOM_MS + CONTENT_MS <= REVEAL_MS);
 });
