@@ -1,6 +1,7 @@
 """Test helpers for building quizzes and games without a database."""
 
 from app.game import scoring
+from app.game.constants import REVEAL_SECONDS
 from app.game.engine import Game
 from app.quizdata import CategoryData, MediaRef, QuestionData, QuizData, RoundData
 
@@ -37,6 +38,12 @@ def make_quiz(rounds: list[RoundData], logo: MediaRef | None = None) -> QuizData
 
 def new_game(quiz: QuizData, clock=None) -> Game:
     return Game.new(quiz, clock=clock or FakeClock())
+
+
+def reveal(g: Game, clock: FakeClock) -> None:
+    """Let the jeopardy cell reveal animation finish so the question starts."""
+    clock.advance(REVEAL_SECONDS)
+    g.tick()
 
 
 def total(g: Game, team_id: str) -> int:

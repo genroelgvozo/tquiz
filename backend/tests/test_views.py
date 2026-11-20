@@ -1,8 +1,9 @@
 from app.game import scoring
 from app.game.commands import *  # noqa: F403
-from app.game.views import admin_view, screen_view, team_view
+from app.game.constants import REVEAL_SECONDS
+from app.game.views import TypingView, admin_view, screen_view, team_view
 from app.quizdata import media_ref
-from tests.factories import FakeClock, free_round, jeopardy_round, make_quiz, new_game, q
+from tests.factories import FakeClock, free_round, jeopardy_round, make_quiz, new_game, q, reveal
 
 SECRET_ANS = "СекретныйОтвет"
 IMG = media_ref("c" * 32 + ".png", "image")
@@ -29,8 +30,8 @@ def scripted_states():
     a = g.join("А").team_id
     b = g.join("Б").team_id
     steps = [
-        StartGame(), StartRound(), OpenCell(question_id=1), ("team", a, BuzzCmd()), Judge(correct=False),
-        ("team", b, BuzzCmd()), Judge(correct=True), ToBoard(), OpenCell(question_id=2),
+        StartGame(), StartRound(), OpenCell(question_id=1), ("wait", REVEAL_SECONDS), ("team", a, BuzzCmd()),
+        Judge(correct=False), ("team", b, BuzzCmd()), Judge(correct=True), ToBoard(), OpenCell(question_id=2),
         SetSecretRecipient(team_id=a), Judge(correct=True), NextRound(), StartRound(),
         ("team", a, SubmitAnswer(text="ответ команды А", stake=True)),
         Mark(question_id=3, team_id=a, correct=True, text="ответ команды А"), TimerStart(),
@@ -38,7 +39,10 @@ def scripted_states():
     ]
     yield g, None
     for s in steps:
-        if isinstance(s, tuple):
+        if isinstance(s, tuple) and s[0] == "wait":
+            clock.advance(s[1])
+            g.tick()
+        elif isinstance(s, tuple):
             g.apply_team(s[1], s[2])
         else:
             g.apply_admin(s)
@@ -102,6 +106,7 @@ def test_team_jeopardy_view_has_bar_seconds():
     g.apply_admin(StartGame())
     g.apply_admin(StartRound())
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     v = team_view(g, a).jeopardy
     assert v.buzzer == "bar" and v.bar_seconds == 7
 
@@ -129,6 +134,7 @@ def test_team_score_by_stage():
     assert team_view(g, a).score == TeamScore(kind="total", value=0)
     g.apply_admin(StartRound())
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     g.apply_team(a, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     assert team_view(g, a).score == TeamScore(kind="round", value=100)
@@ -165,6 +171,7 @@ def test_standings_columns_and_rows():
     g.apply_admin(StartGame())
     g.apply_admin(StartRound())
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     g.apply_team(b, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     g.apply_admin(NextRound())
@@ -179,6 +186,7 @@ def test_screen_jeopardy_has_round_scores():
     g.apply_admin(StartGame())
     g.apply_admin(StartRound())
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     g.apply_team(a, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     assert screen_view(g, "u").jeopardy.scores == {a: 100, b: 0}
@@ -192,3 +200,47 @@ def test_admin_view_teams_have_round_and_total_and_adjust_target():
     st = admin_view(g, "u", set()).state
     assert st.score_adjust_round == 0
     assert all(t.round_score is not None and t.total == 0 for t in st.teams)
+
+
+def test_screen_typing_view_only_for_live_typewriter_question():
+    def start(typewriter):
+        rnd = jeopardy_round(
+            1,
+            [("К", [q(1), q(2, is_secret=True), q(3)])],
+            buzzer_mode="instant",
+            typewriter=typewriter,
+            type_speed=12,
+        )
+        g = new_game(make_quiz([rnd]))
+        a, b = g.join("А").team_id, g.join("Б").team_id
+        g.apply_admin(StartGame())
+        g.apply_admin(StartRound())
+        g.apply_admin(SetChooser(team_id=a))
+        return g, a, b
+
+    g, a, b = start(typewriter=True)
+    g.apply_admin(OpenCell(question_id=1))
+    assert screen_view(g, "u").jeopardy.typing == TypingView(base=0, since=None, speed=12)
+    reveal(g, g.clock)
+    s = screen_view(g, "u").jeopardy
+    assert s.question_id == 1 and s.typing == TypingView(base=0, since=g.clock.t, speed=12)
+    g.clock.advance(1)
+    g.apply_team(b, BuzzCmd())
+    assert screen_view(g, "u").jeopardy.typing == TypingView(base=12, since=None, speed=12)
+    g.apply_admin(Reveal())
+    s = screen_view(g, "u").jeopardy
+    assert (s.phase, s.question_id, s.typing) == ("answer", 1, None)
+    g.apply_admin(OpenCell(question_id=3))
+    assert screen_view(g, "u").jeopardy.typing == TypingView(base=0, since=None, speed=12)
+    g.apply_admin(ToBoard())
+    assert screen_view(g, "u").jeopardy.question_id is None
+    g.apply_admin(OpenCell(question_id=2))
+    assert screen_view(g, "u").jeopardy.typing is None
+    g.apply_admin(SetSecretRecipient(team_id=b))
+    s = screen_view(g, "u").jeopardy
+    assert (s.phase, s.question_id, s.typing) == ("question", 2, None)
+
+    g, a, b = start(typewriter=False)
+    g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
+    assert screen_view(g, "u").jeopardy.typing is None

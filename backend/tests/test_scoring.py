@@ -5,7 +5,7 @@ from app.game.commands import *  # noqa: F403
 from app.game.engine import GameError
 from app.game.state import GameState
 from app.game.views import admin_view
-from tests.factories import FakeClock, free_round, jeopardy_round, make_quiz, new_game, q, round_score, total
+from tests.factories import FakeClock, free_round, jeopardy_round, make_quiz, new_game, q, reveal, round_score, total
 
 
 def quiz():
@@ -38,10 +38,12 @@ def in_round1(g):
 def play_round1(g, a, b):
     in_round1(g)
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     g.apply_team(a, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     g.apply_admin(ToBoard())
     g.apply_admin(OpenCell(question_id=2))
+    reveal(g, g.clock)
     g.apply_team(b, BuzzCmd())
     g.apply_admin(Judge(correct=False))
 
@@ -85,6 +87,7 @@ def test_finish_game_closes_current_round():
     g, a, b = setup()
     in_round1(g)
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     g.apply_team(a, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     g.apply_admin(FinishGame())
@@ -152,6 +155,7 @@ def test_undo_judge_restores_round_score_after_manual_adjust():
     in_round1(g)
     g.apply_admin(AdjustScore(team_id=a, delta=7))
     g.apply_admin(OpenCell(question_id=1))
+    reveal(g, g.clock)
     g.apply_team(a, BuzzCmd())
     g.apply_admin(Judge(correct=True))
     assert round_score(g, a) == 107

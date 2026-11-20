@@ -88,6 +88,14 @@ class BoardCategory(BaseModel):
     cells: list[BoardCell]
 
 
+class TypingView(BaseModel):
+    """Letter-by-letter printing: printed = base + (now - since) * speed while since is set, frozen at base otherwise."""
+
+    base: float
+    since: float | None
+    speed: int
+
+
 class ScreenJeopardy(BaseModel):
     phase: JeopardyPhase
     board: list[BoardCategory]
@@ -96,7 +104,9 @@ class ScreenJeopardy(BaseModel):
     buttons: Buttons
     bar_ends_at: float | None
     bar_seconds: int
+    question_id: int | None
     question: ScreenQuestion | None
+    typing: TypingView | None
     scores: dict[str, int]
 
 
@@ -273,9 +283,10 @@ def _screen_jeopardy(game: Game, rnd: RoundData) -> ScreenJeopardy:
         )
         for c in rnd.categories
     ]
-    question = None
+    question_id = question = typing = None
     current = jeopardy.current_question(game)
     if current is not None and j.phase != "board":
+        question_id = current.id
         question = ScreenQuestion(
             title=_jeopardy_label(rnd, current),
             text=None if j.phase == "secret" else current.text,
@@ -283,6 +294,9 @@ def _screen_jeopardy(game: Game, rnd: RoundData) -> ScreenJeopardy:
             options=[],
             answer=current.answer if j.phase == "answer" else None,
         )
+        # printing only while a plain question is live; in the answer the whole text is shown
+        if rnd.typewriter and j.phase == "question" and not current.is_secret:
+            typing = TypingView(base=j.typed_base, since=j.typing_since, speed=rnd.type_speed)
     return ScreenJeopardy(
         phase=j.phase,
         board=board,
@@ -291,7 +305,9 @@ def _screen_jeopardy(game: Game, rnd: RoundData) -> ScreenJeopardy:
         buttons=j.buttons,
         bar_ends_at=j.bar_ends_at,
         bar_seconds=rnd.bar_seconds,
+        question_id=question_id,
         question=question,
+        typing=typing,
         scores={t.id: scoring.current_round_score(game, t) or 0 for t in game.state.teams},
     )
 

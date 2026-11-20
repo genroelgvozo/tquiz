@@ -42,6 +42,11 @@ class JeopardyState(BaseModel):
     buzzes: list[Buzz] = Field(default_factory=list)
     answering_team_id: str | None = None
     excluded: list[str] = Field(default_factory=list)
+    # the question starts (buttons/bar, printing, its audio) once the cell reveal animation is over
+    starts_at: float | None = None
+    # letter-by-letter printing: chars printed = typed_base + (now - typing_since) * type_speed while typing_since is set
+    typed_base: float = 0.0
+    typing_since: float | None = None
 
 
 class Timer(BaseModel):
