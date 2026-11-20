@@ -161,9 +161,25 @@ def test_review_only_moves_screen():
     marks_before = copy.deepcopy(g.state.free.marks)
     g.apply_admin(StartReview())
     g.apply_admin(ReviewGoto(index=1))
-    assert g.state.free.marks == marks_before and g.state.free.revealed == [1, 2]
+    assert g.state.free.marks == marks_before and g.state.free.revealed == []
     g.apply_admin(Mark(question_id=1, team_id=b, correct=True, text="Саврасов"))
     assert g.state.free.marks["1"][b] is True
+
+
+def test_review_answer_hidden_until_shown():
+    g, clock, a, b, c = setup()
+    with pytest.raises(GameError):
+        g.apply_admin(ReviewShowAnswer())
+    g.apply_admin(StartReview())
+    assert g.state.free.answer_shown is False and g.state.free.revealed == []
+    g.apply_admin(ReviewShowAnswer())
+    assert g.state.free.answer_shown is True and g.state.free.revealed == [1]
+    g.apply_admin(ReviewShowAnswer())
+    assert g.state.free.revealed == [1]
+    g.apply_admin(ReviewGoto(index=1))
+    assert g.state.free.answer_shown is False
+    g.apply_admin(ReviewGoto(index=0))
+    assert g.state.free.answer_shown is False
 
 
 def test_round_points_count_stakes_and_marks():

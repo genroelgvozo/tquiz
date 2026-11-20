@@ -35,7 +35,8 @@ def scripted_states():
         SetSecretRecipient(team_id=a), Judge(correct=True), NextRound(), StartRound(),
         ("team", a, SubmitAnswer(text="ответ команды А", stake=True)),
         Mark(question_id=3, team_id=a, correct=True, text="ответ команды А"), TimerStart(),
-        OpenQuestion(index=1), ("team", b, SubmitAnswer(option=1)), StartReview(), ReviewGoto(index=1), FinishGame(),
+        OpenQuestion(index=1), ("team", b, SubmitAnswer(option=1)), StartReview(), ReviewShowAnswer(), ReviewGoto(index=1),
+        ReviewShowAnswer(), FinishGame(),
     ]
     yield g, None
     for s in steps:
@@ -65,11 +66,23 @@ def test_team_view_never_leaks():
 def test_screen_view_answer_only_when_revealed():
     for g, step in scripted_states():
         s = screen_view(g, "http://quiz.test/play")
-        revealed = (s.jeopardy and s.jeopardy.phase == "answer") or (s.free and s.free.phase == "review")
+        revealed = (s.jeopardy and s.jeopardy.phase == "answer") or (
+            s.free and s.free.phase == "review" and g.state.free.answer_shown
+        )
         dumped = s.model_dump_json()
         assert (SECRET_ANS in dumped) == bool(revealed), step
         assert "correct_option" not in dumped and "ответ команды А" not in dumped
         assert '"marks"' not in dumped
+
+
+def test_review_highlight_option_only_after_show():
+    for g, step in scripted_states():
+        if isinstance(step, ReviewGoto):
+            q_ = screen_view(g, "u").free.question
+            assert q_.highlight_option is None and q_.answer is None
+        if isinstance(step, ReviewShowAnswer) and g.state.free.review_index == 1:
+            q_ = screen_view(g, "u").free.question
+            assert q_.highlight_option == 1 and q_.answer == SECRET_ANS
 
 
 def test_screen_secret_hides_text_until_recipient():

@@ -140,5 +140,6 @@ def test_free_state_with_marks_roundtrips_json():
     g.apply_admin(StartRound())
     g.apply_team(a, SubmitAnswer(text="ещё"))
     g.apply_admin(StartReview())
+    g.apply_admin(ReviewShowAnswer())
     assert g.state.free.revealed and g.state.free.opened
     assert GameState.model_validate_json(g.state.model_dump_json()) == g.state

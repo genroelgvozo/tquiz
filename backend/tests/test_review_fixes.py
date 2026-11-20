@@ -70,6 +70,7 @@ def test_screen_review_shows_correct_option_when_answer_text_empty():
     g.apply_admin(StartGame())
     g.apply_admin(StartRound())
     g.apply_admin(StartReview())
+    g.apply_admin(ReviewShowAnswer())
     assert screen_view(g, "u").free.question.answer == "B. Саврасов"
 
 

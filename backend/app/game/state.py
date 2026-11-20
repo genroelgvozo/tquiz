@@ -74,6 +74,8 @@ class FreeState(BaseModel):
     # ids of questions that were opened / whose answer was shown on the screen
     opened: list[int] = Field(default_factory=list)
     revealed: list[int] = Field(default_factory=list)
+    # review: the answer of the current question is shown on the screen (host's button)
+    answer_shown: bool = False
 
 
 class AudioCmd(BaseModel):

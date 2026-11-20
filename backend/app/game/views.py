@@ -75,6 +75,8 @@ class ScreenQuestion(BaseModel):
     media: MediaRef | None
     options: list[str]
     answer: str | None
+    # option index to highlight after the answer is shown (named so that `correct_option` never appears)
+    highlight_option: int | None = None
 
 
 class BoardCell(BaseModel):
@@ -293,6 +295,7 @@ def _screen_jeopardy(game: Game, rnd: RoundData) -> ScreenJeopardy:
             media=None if j.phase == "secret" else current.media,
             options=[],
             answer=current.answer if j.phase == "answer" else None,
+            highlight_option=None,
         )
         # printing only while a plain question is live; in the answer the whole text is shown
         if rnd.typewriter and j.phase == "question" and not current.is_secret:
@@ -316,6 +319,7 @@ def _screen_free(game: Game, rnd: RoundData) -> ScreenFree:
     free = game.state.free
     total = len(rnd.questions)
     reviewing = free.phase == "review"
+    show_answer = reviewing and free.answer_shown
     index = free.review_index if reviewing else free.index
     current = rnd.questions[index]
     return ScreenFree(
@@ -328,7 +332,8 @@ def _screen_free(game: Game, rnd: RoundData) -> ScreenFree:
             text=current.text,
             media=current.media,
             options=list(current.options),
-            answer=_revealed_answer(current) if reviewing else None,
+            answer=_revealed_answer(current) if show_answer else None,
+            highlight_option=current.correct_option if show_answer else None,
         ),
     )
 

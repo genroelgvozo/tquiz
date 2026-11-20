@@ -176,13 +176,17 @@ class SubmitAnswer(_Cmd):
     stake: bool = False
 
 
+class ReviewShowAnswer(_Cmd):
+    type: Literal["review_show_answer"] = "review_show_answer"
+
+
 AdminCommand = Annotated[
     Union[
         ShowQr, StartGame, StartRound, NextRound, FinishGame, RenameTeam, DeleteTeam,
         ApproveRejoin, RejectRejoin, AdjustScore, Undo, SetOverlay, AudioControl,
         SetChooser, OpenCell, SetSecretRecipient, OpenButtons, Judge, Reveal, ToBoard,
         OpenQuestion, TimerStart, TimerPause, TimerResume, TimerAdd, TimerFinish,
-        StartReview, ReviewGoto, Mark,
+        StartReview, ReviewGoto, ReviewShowAnswer, Mark,
     ],
     Field(discriminator="type"),
 ]

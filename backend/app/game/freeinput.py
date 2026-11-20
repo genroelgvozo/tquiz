@@ -6,6 +6,7 @@ from app.game.commands import (
     Mark,
     OpenQuestion,
     ReviewGoto,
+    ReviewShowAnswer,
     StartReview,
     SubmitAnswer,
     TimerAdd,
@@ -198,9 +199,7 @@ def _enter_review(game: "Game", index: int) -> None:
         raise GameError("Нет такого вопроса")
     free = game.state.free
     free.review_index = index
-    question_id = rnd.questions[index].id
-    if question_id not in free.revealed:
-        free.revealed.append(question_id)
+    free.answer_shown = False
 
 
 def _start_review(game: "Game", cmd: StartReview) -> None:
@@ -216,6 +215,16 @@ def _review_goto(game: "Game", cmd: ReviewGoto) -> None:
     if _free(game).phase != "review":
         raise GameError("Разбор ещё не начат")
     _enter_review(game, cmd.index)
+
+
+def _review_show_answer(game: "Game", cmd: ReviewShowAnswer) -> None:
+    free = _free(game)
+    if free.phase != "review":
+        raise GameError("Разбор ещё не начат")
+    free.answer_shown = True
+    question_id = review_question(game).id
+    if question_id not in free.revealed:
+        free.revealed.append(question_id)
 
 
 def _mark(game: "Game", cmd: Mark) -> None:
@@ -266,6 +275,7 @@ HANDLERS: dict = {
     TimerFinish: _timer_finish,
     StartReview: _start_review,
     ReviewGoto: _review_goto,
+    ReviewShowAnswer: _review_show_answer,
     Mark: _mark,
 }
 
