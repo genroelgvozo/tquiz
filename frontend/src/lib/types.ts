@@ -11,6 +11,13 @@ export interface MediaRef {
   url: string;
 }
 
+export interface Theme {
+  bg: string;
+  text: string;
+  accent: string;
+  second: string;
+}
+
 export interface QuestionData {
   id: number;
   position: number;
@@ -45,6 +52,11 @@ export interface RoundData {
   input_seconds: number;
   stakes: boolean;
   cell_values: number[];
+  background: MediaRef | null;
+  intro_music: MediaRef | null;
+  think_music: MediaRef | null;
+  typewriter: boolean;
+  type_speed: number;
   categories: CategoryData[];
   questions: QuestionData[];
 }
@@ -53,6 +65,9 @@ export interface QuizData {
   id: number;
   title: string;
   logo: MediaRef | null;
+  theme: Theme;
+  background: MediaRef | null;
+  lobby_music: MediaRef | null;
   rounds: RoundData[];
 }
 
@@ -92,6 +107,9 @@ export interface JeopardyState {
   buzzes: Buzz[];
   answering_team_id: string | null;
   excluded: string[];
+  starts_at: number | null;
+  typed_base: number;
+  typing_since: number | null;
 }
 
 export interface Timer {
@@ -117,6 +135,7 @@ export interface FreeState {
   marks: Record<string, Record<string, boolean | null>>;
   opened: number[];
   revealed: number[];
+  answer_shown: boolean;
 }
 
 export interface AudioCmd {
@@ -180,6 +199,7 @@ export interface ScreenQuestion {
   media: MediaRef | null;
   options: string[];
   answer: string | null;
+  highlight_option: number | null;
 }
 
 export interface BoardCell {
@@ -193,6 +213,18 @@ export interface BoardCategory {
   cells: BoardCell[];
 }
 
+export interface TypingView {
+  base: number;
+  since: number | null;
+  speed: number;
+}
+
+export interface MusicNow {
+  url: string;
+  key: string;
+  playing: boolean;
+}
+
 export interface ScreenJeopardy {
   phase: JeopardyPhase;
   board: BoardCategory[];
@@ -201,7 +233,9 @@ export interface ScreenJeopardy {
   buttons: Buttons;
   bar_ends_at: number | null;
   bar_seconds: number;
+  question_id: number | null;
   question: ScreenQuestion | null;
+  typing: TypingView | null;
   scores: Record<string, number>;
 }
 
@@ -218,6 +252,9 @@ export interface ScreenView {
   now: number;
   quiz_title: string;
   logo_url: string | null;
+  theme: Theme;
+  background_url: string | null;
+  quiz_background_url: string | null;
   stage: Stage;
   join_url: string;
   qr_visible: boolean;
@@ -225,6 +262,7 @@ export interface ScreenView {
   round: RoundPublic | null;
   overlay: "leaderboard" | null;
   audio: AudioCmd;
+  music: MusicNow | null;
   preload: string[];
   standings: Standings;
   jeopardy: ScreenJeopardy | null;
@@ -263,6 +301,7 @@ export interface TeamFree {
 export interface TeamView {
   kind: "team";
   now: number;
+  theme: Theme;
   team: TeamPublic;
   score: TeamScore | null;
   stage: Stage;
@@ -284,6 +323,8 @@ export interface AdminState {
   free: FreeState | null;
   overlay: "leaderboard" | null;
   audio: AudioCmd;
+  music: MusicNow | null;
+  music_paused: boolean;
 }
 
 export interface AdminView {
@@ -294,6 +335,7 @@ export interface AdminView {
   state: AdminState;
   online_team_ids: string[];
   undo_available: boolean;
+  screen_sound: "none" | "on" | "off";
 }
 
 // ---------- WebSocket protocol (app/ws/hub.py) ----------
@@ -301,7 +343,7 @@ export interface AdminView {
 export type ServerMessage<V> =
   | { type: "state"; view: V | null }
   | { type: "error"; message: string }
-  | { type: "need_join" }
+  | { type: "need_join"; theme?: Theme }
   | { type: "no_game" }
   | { type: "joined"; token: string }
   | { type: "pending" }
@@ -325,6 +367,7 @@ export type AdminCommand =
   | { type: "undo" }
   | { type: "set_overlay"; overlay: "leaderboard" | null }
   | { type: "audio"; action: "play" | "pause" | "restart" }
+  | { type: "music_toggle" }
   | { type: "set_chooser"; team_id: string }
   | { type: "open_cell"; question_id: number }
   | { type: "set_secret_recipient"; team_id: string }
@@ -340,6 +383,7 @@ export type AdminCommand =
   | { type: "timer_finish" }
   | { type: "start_review" }
   | { type: "review_goto"; index: number }
+  | { type: "review_show_answer" }
   | { type: "mark"; question_id: number; team_id: string; correct: boolean | null; text: string; option: number | null };
 
 export type TeamCommand =
