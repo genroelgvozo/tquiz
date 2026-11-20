@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { AudioAction, ScreenView } from "../lib/types";
 
-// 44-byte silent WAV used to unlock the single <audio> player inside the user gesture
-const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+// 44-byte silent WAV used to unlock an <audio> player inside the user gesture
+export const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 const AUDIO_RE = /\.(mp3|m4a|ogg|wav)$/i;
 
 function currentAudioUrl(view: ScreenView | null): string | null {

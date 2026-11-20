@@ -19,6 +19,24 @@
   height: 8vh;
 }
 
+/* background picture: under everything else in its container (the root and the overlay are stacking contexts) */
+.scr-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.scr-backdrop-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
 /* scenes overlap while one changes to another */
 .scr-scene {
   position: absolute;
@@ -293,6 +311,7 @@
 .scr-overlay {
   position: absolute;
   inset: 0;
+  isolation: isolate;
   background: var(--bg);
   display: flex;
   padding: 4vh 4vw;
@@ -313,37 +332,28 @@
   font-size: 0.7em;
 }
 
-.scr-fs-btn {
+/* sound and fullscreen icons: faint until hovered */
+.scr-controls {
   position: absolute;
   right: 1vw;
   top: 1vh;
+  display: flex;
+  gap: 0.3em;
+}
+
+.scr-icon {
   background: transparent;
   border: none;
-  color: var(--line);
+  padding: 0.2em;
+  color: var(--text);
   font-size: 1.2em;
+  line-height: 1;
+  opacity: 0.35;
+  transition: opacity 0.2s;
 }
 
-.scr-fs-btn:hover {
-  color: var(--muted);
-}
-
-.scr-gate {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.scr-gate-btn {
-  background: var(--accent);
-  color: var(--on-accent);
-  border: none;
-  border-radius: 0.5em;
-  padding: 1em 2em;
-  font-size: 1.4em;
-  font-weight: 700;
+.scr-icon:hover {
+  opacity: 0.9;
 }
 
 .scr-standings {

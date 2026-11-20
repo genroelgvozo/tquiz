@@ -8,9 +8,12 @@ import { useServerClock } from "../lib/clock";
 import { DEFAULT_THEME, themeVars } from "../lib/theme";
 import { useSocket } from "../lib/socket";
 import type { ScreenView, ServerMessage } from "../lib/types";
+import { Backdrop } from "./Backdrop";
 import { sceneOf } from "./scene";
 import { SceneStage } from "./SceneStage";
 import "./screen.css";
+import { SoundControls } from "./SoundControls";
+import { useBackgroundMusic } from "./useBackgroundMusic";
 import type { SceneSequence } from "./useSceneSequence";
 import { useBuzzBeep, useScreenAudio } from "./useScreenAudio";
 import BoardView from "./views/BoardView";
@@ -106,10 +109,21 @@ function sceneContent({ shown }: SceneSequence, view: ScreenView | null, now: ()
   return <div className="scr-center scr-h1">{view?.quiz_title ?? "TQuiz"}</div>;
 }
 
+/** WebAudio for the buzz beep; null without WebAudio. */
+function newAudioContext(): AudioContext | null {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    return new Ctx();
+  } catch {
+    return null;
+  }
+}
+
 export default function ScreenApp() {
   const ready = useScreenAuth();
   const [view, setView] = useState<ScreenView | null>(null);
   const [unlocked, setUnlocked] = useState(false);
+  const soundOn = useRef(false); // `unlocked` without waiting for a render: the click after the pointerdown does nothing
   const [beepCtx, setBeepCtx] = useState<AudioContext | null>(null);
   // The first snapshot after loading or reconnecting remounts the stage, so it is drawn at once, without animation.
   const [stageEpoch, setStageEpoch] = useState(0);
@@ -123,28 +137,56 @@ export default function ScreenApp() {
     }
     setView(m.view);
   }, []);
-  const { status } = useSocket<ScreenView>(ready ? "/ws/screen" : null, onMessage);
+  const { send, status } = useSocket<ScreenView>(ready ? "/ws/screen" : null, onMessage);
   useEffect(() => {
     if (status !== "open") awaitingFirst.current = true;
   }, [status]);
   const now = useServerClock(view?.now);
   const style = themeVars(view?.theme ?? DEFAULT_THEME) as React.CSSProperties;
-  const unlockAudio = useScreenAudio(view, unlocked);
-  useBuzzBeep(view?.jeopardy?.answering_team_id, beepCtx);
+  const unlockQuestionAudio = useScreenAudio(view, unlocked);
+  const unlockMusic = useBackgroundMusic(view?.music ?? null, unlocked);
+  // a suspended context would play a queued beep on unlocking, so no beeps until then
+  useBuzzBeep(view?.jeopardy?.answering_team_id, unlocked ? beepCtx : null);
 
-  const enter = () => {
-    unlockAudio();
-    try {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new Ctx();
-      void ctx.resume();
-      setBeepCtx(ctx);
-    } catch {
-      /* no WebAudio: no beep */
-    }
-    void document.documentElement.requestFullscreen?.().catch(() => {});
+  // The beep's context is made at once: if it is already running, the browser lets this page make sound without a click.
+  useEffect(() => {
+    const ctx = newAudioContext();
+    if (!ctx) return;
+    setBeepCtx(ctx);
+    const onState = () => {
+      if (ctx.state !== "running") return;
+      soundOn.current = true;
+      setUnlocked(true);
+    };
+    ctx.addEventListener("statechange", onState);
+    onState();
+    return () => {
+      ctx.removeEventListener("statechange", onState);
+      void ctx.close().catch(() => {});
+    };
+  }, []);
+
+  /** Unlocks both players and the beep; must run inside the user's click. */
+  const enableSound = useCallback(() => {
+    if (soundOn.current) return;
+    soundOn.current = true;
+    unlockQuestionAudio();
+    unlockMusic();
+    void beepCtx?.resume().catch(() => {});
     setUnlocked(true);
-  };
+  }, [beepCtx, unlockQuestionAudio, unlockMusic]);
+
+  // the first click anywhere on the screen turns the sound on
+  useEffect(() => {
+    if (unlocked) return;
+    window.addEventListener("pointerdown", enableSound, { once: true });
+    return () => window.removeEventListener("pointerdown", enableSound);
+  }, [unlocked, enableSound]);
+
+  // the console warns the host while no screen has its sound on
+  useEffect(() => {
+    if (status === "open") send({ type: "sound", on: unlocked });
+  }, [status, unlocked, send]);
 
   if (status === "unauthorized") {
     return <div className="hall scr-root center-message" style={style}>Откройте экран по ссылке из админки</div>;
@@ -152,6 +194,8 @@ export default function ScreenApp() {
 
   return (
     <div className={`hall scr-root${view?.logo_url ? " scr-with-logo" : ""}`} style={style}>
+      {/* mounted with the first snapshot, so the first picture is drawn at once */}
+      {view && <Backdrop url={view.background_url} />}
       <SceneStage key={stageEpoch} scene={sceneOf(view)}>
         {(seq) => sceneContent(seq, view, now)}
       </SceneStage>
@@ -160,6 +204,7 @@ export default function ScreenApp() {
       </div>
       {view?.overlay === "leaderboard" && (
         <div className="scr-overlay">
+          <Backdrop url={view.quiz_background_url} />
           <LeaderboardView standings={view.standings} />
         </div>
       )}
@@ -169,21 +214,7 @@ export default function ScreenApp() {
         </div>
       )}
       {status !== "open" && <div className="scr-offline">нет связи…</div>}
-      {unlocked ? (
-        <button
-          className="scr-fs-btn"
-          title="На весь экран"
-          onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}
-        >
-          ⛶
-        </button>
-      ) : (
-        <div className="scr-gate">
-          <button className="scr-gate-btn" onClick={enter}>
-            Включить звук и на весь экран
-          </button>
-        </div>
-      )}
+      <SoundControls soundOn={unlocked} onSound={enableSound} />
     </div>
   );
 }

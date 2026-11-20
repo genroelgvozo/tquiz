@@ -143,6 +143,7 @@ export default function Console() {
           {round ? ` · Тур ${st.round_index + 1}` : ""} · {STAGE_TITLES[st.stage]}
         </Title>
         {status !== "open" && <Badge color="yellow">нет связи…</Badge>}
+        {view.screen_sound === "off" && <Badge color="red">На экране выключен звук — кликните по окну экрана</Badge>}
         {screenUrl && (
           <>
             <Button variant="default" onClick={() => window.open(screenUrl, "tquiz-screen")}>
@@ -156,6 +157,11 @@ export default function Console() {
         <Button variant="default" onClick={() => send({ type: "show_qr", visible: !st.qr_visible })}>
           QR входа: {st.qr_visible ? "скрыть" : "показать"}
         </Button>
+        {st.music && (
+          <Button variant="default" onClick={() => send({ type: "music_toggle" })}>
+            {st.music_paused ? "Музыка ▶" : "Музыка ⏸"}
+          </Button>
+        )}
         <Button
           variant={st.overlay === "leaderboard" ? "filled" : "default"}
           onClick={() => send({ type: "set_overlay", overlay: st.overlay === "leaderboard" ? null : "leaderboard" })}
