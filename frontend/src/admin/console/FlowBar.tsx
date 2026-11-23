@@ -62,7 +62,9 @@ export default function FlowBar({ view, send, status, onCloseGame }: Props) {
           {undoText}
         </Text>
       </Button>
-      <Button miw={170} variant={step.highlighted ? "filled" : "default"} onClick={onStep}>
+      {/* a mouse click does not focus the step button: Space/Enter later must not press it again
+          (it keeps its place while its label changes, and «Начать тур» has no confirmation) */}
+      <Button miw={170} variant={step.highlighted ? "filled" : "default"} onMouseDown={(e) => e.preventDefault()} onClick={onStep}>
         {step.label}
       </Button>
       {items.length > 0 ? (
