@@ -1,30 +1,25 @@
-import { Anchor, Badge, Button, Grid, Group, Modal, Paper, Stack, Text, Title } from "@mantine/core";
-import { useCallback, useEffect, useState } from "react";
+import { Anchor, Box, Button, Grid, Paper, Stack, Text, Title } from "@mantine/core";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { Qr } from "../../components/Qr";
 import { api } from "../../lib/api";
 import { leadersAndRanks } from "../../lib/standings";
 import { useSocket } from "../../lib/socket";
 import type { AdminCommand, AdminView, ServerMessage } from "../../lib/types";
-import { confirmDialog } from "../dialogs";
 import { notifyApiError, notifyError } from "../notify";
 import { ROUND_KINDS } from "../roundKinds";
 import { SectionLabel } from "../ui";
-import { uncheckedCount } from "./check";
 import CheckTable from "./CheckTable";
 import "./console.css";
+import FlowBar from "./FlowBar";
 import FreePanel from "./FreePanel";
 import JeopardyPanel from "./JeopardyPanel";
 import LobbyPanel from "./LobbyPanel";
 import ReviewPanel from "./ReviewPanel";
+import ScreenBar from "./ScreenBar";
 import TeamsPanel from "./TeamsPanel";
-
-const STAGE_TITLES = { lobby: "Лобби", intro: "Заставка тура", jeopardy: "Своя игра", free: "Свободный ввод", finished: "Игра окончена" };
 
 export default function Console() {
   const [view, setView] = useState<AdminView | null | undefined>(undefined);
-  const [screenUrl, setScreenUrl] = useState<string | null>(null);
-  const [showScreenQr, setShowScreenQr] = useState(false);
 
   const onMessage = useCallback((m: ServerMessage<AdminView>) => {
     if (m.type === "state") setView(m.view);
@@ -38,20 +33,8 @@ export default function Console() {
     [rawSend],
   );
 
-  useEffect(() => {
-    api<{ url: string }>("GET", "/api/game/screen-link")
-      .then((r) => setScreenUrl(r.url))
-      .catch(() => {});
-  }, []);
-
+  // the confirmation is asked by FlowBar (stepConfirm "close_game")
   const closeGame = async () => {
-    const ok = await confirmDialog({
-      title: "Закрыть игру?",
-      message: "Экран и телефоны вернутся в ожидание.",
-      confirmLabel: "Закрыть игру",
-      danger: true,
-    });
-    if (!ok) return;
     try {
       await api("POST", "/api/game/stop");
     } catch (e) {
@@ -75,20 +58,9 @@ export default function Console() {
 
   const st = view.state;
   const round = st.round_index >= 0 ? view.quiz.rounds[st.round_index] : undefined;
-  const hasNextRound = st.round_index + 1 < view.quiz.rounds.length;
-  // Unchecked answers and unfinished questions of the current round (for the "next round" / "finish" warnings).
-  const roundProgress = () => {
-    const unchecked = st.stage === "free" ? uncheckedCount(view) : 0;
-    const unfinished =
-      (st.stage === "free" && (st.free?.phase === "question" || unchecked > 0)) ||
-      (st.stage === "jeopardy" && round !== undefined && st.jeopardy !== null &&
-        st.jeopardy.played.length < round.categories.reduce((n, c) => n + c.questions.length, 0));
-    return { unchecked, unfinished };
-  };
-  const inGame = st.stage === "intro" || st.stage === "jeopardy" || st.stage === "free";
 
   let panel: React.ReactNode = null;
-  if (st.stage === "lobby") panel = <LobbyPanel view={view} send={send} />;
+  if (st.stage === "lobby") panel = <LobbyPanel view={view} />;
   else if (st.stage === "intro" && round)
     panel = (
       <Paper withBorder p="md">
@@ -98,14 +70,11 @@ export default function Console() {
         <Stack align="flex-start">
           <Title order={3}>{round.title}</Title>
           <Text c="dimmed">{st.overlay === "leaderboard" ? "На экране сводная таблица." : "На экране заставка тура."}</Text>
-          <Group>
-            <Button onClick={() => send({ type: "start_round" })}>Начать тур</Button>
-            {st.overlay === "leaderboard" && (
-              <Button variant="default" onClick={() => send({ type: "set_overlay", overlay: null })}>
-                Показать заставку тура
-              </Button>
-            )}
-          </Group>
+          {st.overlay === "leaderboard" && (
+            <Button variant="default" onClick={() => send({ type: "set_overlay", overlay: null })}>
+              Показать заставку тура
+            </Button>
+          )}
         </Stack>
       </Paper>
     );
@@ -129,7 +98,6 @@ export default function Console() {
               {winners.length === 1 ? "Победитель" : "Победители"}: {winners.map((w) => w.name).join(", ")} ({winners[0].total})
             </Title>
           )}
-          <Button onClick={closeGame}>Закрыть игру</Button>
         </Stack>
       </Paper>
     );
@@ -137,94 +105,12 @@ export default function Console() {
 
   return (
     <Stack>
-      <Group gap="xs">
-        <Title order={4} flex={1} miw={200}>
-          Пульт · {view.quiz.title}
-          {round ? ` · Тур ${st.round_index + 1}` : ""} · {STAGE_TITLES[st.stage]}
-        </Title>
-        {status !== "open" && <Badge color="yellow">нет связи…</Badge>}
-        {view.screen_sound === "off" && <Badge color="red">На экране выключен звук — кликните по окну экрана</Badge>}
-        {screenUrl && (
-          <>
-            <Button variant="default" onClick={() => window.open(screenUrl, "tquiz-screen")}>
-              Открыть экран
-            </Button>
-            <Button variant="default" onClick={() => setShowScreenQr(true)}>
-              QR экрана
-            </Button>
-          </>
-        )}
-        <Button variant="default" onClick={() => send({ type: "show_qr", visible: !st.qr_visible })}>
-          QR входа: {st.qr_visible ? "скрыть" : "показать"}
-        </Button>
-        {st.music && (
-          <Button variant="default" onClick={() => send({ type: "music_toggle" })}>
-            {st.music_paused ? "Музыка ▶" : "Музыка ⏸"}
-          </Button>
-        )}
-        <Button
-          variant={st.overlay === "leaderboard" ? "filled" : "default"}
-          onClick={() => send({ type: "set_overlay", overlay: st.overlay === "leaderboard" ? null : "leaderboard" })}
-        >
-          {st.overlay === "leaderboard" ? "Убрать рейтинг" : "Рейтинг на экран"}
-        </Button>
-        {inGame && hasNextRound && (
-          <Button
-            variant="default"
-            onClick={async () => {
-              const { unchecked, unfinished } = roundProgress();
-              const ok =
-                st.stage === "intro" ||
-                (await confirmDialog(
-                  unfinished
-                    ? {
-                        title: "Тур не закончен",
-                        message:
-                          "Есть неразобранные ответы или несыгранные вопросы." +
-                          (unchecked > 0 ? ` Не проверено ответов: ${unchecked}.` : "") +
-                          " Перейти к следующему туру? Вернуться будет нельзя.",
-                        confirmLabel: "Перейти",
-                        danger: true,
-                      }
-                    : { title: "Перейти к следующему туру?", confirmLabel: "Перейти" },
-                ));
-              if (ok) send({ type: "next_round" });
-            }}
-          >
-            След. тур →
-          </Button>
-        )}
-        {st.stage !== "finished" && st.stage !== "lobby" && (
-          <Button
-            variant="default"
-            onClick={async () => {
-              const { unchecked, unfinished: unf } = roundProgress();
-              const unfinished = st.stage === "free" && unf;
-              const ok = await confirmDialog(
-                unfinished
-                  ? {
-                      title: "Тур не закончен",
-                      message:
-                        "Есть неразобранные ответы или несыгранные вопросы." +
-                        (unchecked > 0 ? ` Не проверено ответов: ${unchecked}.` : "") +
-                        " Завершить игру и показать победителя?",
-                      confirmLabel: "Завершить",
-                      danger: true,
-                    }
-                  : { title: "Завершить игру и показать победителя?", confirmLabel: "Завершить" },
-              );
-              if (ok) send({ type: "finish_game" });
-            }}
-          >
-            Завершить игру
-          </Button>
-        )}
-        {st.stage === "lobby" && (
-          <Button variant="default" onClick={closeGame}>
-            Закрыть игру
-          </Button>
-        )}
-      </Group>
+      <Box pos="sticky" top={52} bg="gray.0" style={{ zIndex: 10 }}>
+        <Stack gap="xs" py="xs">
+          <ScreenBar view={view} send={send} />
+          <FlowBar view={view} send={send} status={status} onCloseGame={closeGame} />
+        </Stack>
+      </Box>
 
       <Grid align="flex-start">
         <Grid.Col span={{ base: 12, md: 8, lg: 9 }}>{panel}</Grid.Col>
@@ -232,20 +118,6 @@ export default function Console() {
           <TeamsPanel view={view} send={send} />
         </Grid.Col>
       </Grid>
-
-      <Modal opened={showScreenQr && !!screenUrl} onClose={() => setShowScreenQr(false)} title="Откройте ссылку на ТВ или проекторе">
-        {screenUrl && (
-          <Stack align="center">
-            <Qr value={screenUrl} size={260} />
-            <Text style={{ wordBreak: "break-all" }} ta="center">
-              {screenUrl}
-            </Text>
-            <Button variant="default" onClick={() => setShowScreenQr(false)}>
-              Закрыть
-            </Button>
-          </Stack>
-        )}
-      </Modal>
     </Stack>
   );
 }

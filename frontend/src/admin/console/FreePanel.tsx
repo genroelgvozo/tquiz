@@ -1,7 +1,6 @@
 import { Box, Button, Group, List, Paper, Stack, Text } from "@mantine/core";
 import { PhaseTimerBar } from "../../components/PhaseTimerBar";
 import { useServerClock } from "../../lib/clock";
-import { confirmDialog } from "../dialogs";
 import { AudioControls, QuestionBox } from "./common";
 import type { PanelProps } from "./types";
 
@@ -30,23 +29,6 @@ export default function FreePanel({ view, send }: PanelProps) {
             onClick={() => send({ type: "open_question", index: free.index + 1 })}
           >
             →
-          </Button>
-          <Button
-            ml="auto"
-            variant={free.index >= total - 1 ? "filled" : "default"}
-            onClick={async () => {
-              const early = free.index < total - 1 || (t.status !== "finished" && t.status !== "idle");
-              const ok =
-                !early ||
-                (await confirmDialog({
-                  title: "Начать разбор?",
-                  message: "Вернуться к вопросам этого тура будет нельзя.",
-                  confirmLabel: "Начать разбор",
-                }));
-              if (ok) send({ type: "start_review" });
-            }}
-          >
-            Начать разбор
           </Button>
         </Group>
 
