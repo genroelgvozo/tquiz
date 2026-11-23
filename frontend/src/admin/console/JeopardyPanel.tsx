@@ -1,12 +1,14 @@
-import { Alert, Box, Button, Grid, Group, Paper, Select, Stack, Text } from "@mantine/core";
+import { Alert, Box, Button, Grid, Group, Kbd, Paper, Select, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import type { QuestionData, TypingView } from "../../lib/types";
 import { layoutBoard } from "../../lib/board";
 import { useServerClock, useTicker } from "../../lib/clock";
 import { typedChars } from "../../lib/typing";
+import { confirmDialog } from "../dialogs";
 import { SectionLabel } from "../ui";
 import { AudioControls, QuestionBox } from "./common";
 import type { PanelProps } from "./types";
+import { useConsoleHotkeys } from "./useConsoleHotkeys";
 
 /** The question while the screen is printing it: redrawn as the printed part grows. */
 function PrintingQuestionBox(props: { text: string; answer: ReactNode; typing: TypingView; now: () => number }) {
@@ -19,6 +21,24 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
   const now = useServerClock(view.now);
   const round = view.quiz.rounds[view.state.round_index];
   const j = view.state.jeopardy;
+
+  // keys work only while the matching button is on screen
+  const question = j?.phase === "question";
+  const canOpenButtons = question && !j.answering_team_id && (j.starts_at !== null || j.buttons === "bar");
+  const canJudge = question && !!j.answering_team_id;
+  const openButtons = () => send({ type: "open_buttons" });
+  const judge = (correct: boolean) => () => send({ type: "judge", correct });
+  const toBoard = () => send({ type: "to_board" });
+  useConsoleHotkeys([
+    ["space", canOpenButtons ? openButtons : null],
+    ["equal", canJudge ? judge(true) : null],
+    ["shift+equal", canJudge ? judge(true) : null],
+    ["numpadadd", canJudge ? judge(true) : null],
+    ["minus", canJudge ? judge(false) : null],
+    ["numpadsubtract", canJudge ? judge(false) : null],
+    ["escape", j?.phase === "answer" ? toBoard : null],
+  ]);
+
   if (!round || !j) return null;
   const teams = view.state.teams;
   const name = (id: string | null) => teams.find((t) => t.id === id)?.name ?? "—";
@@ -145,10 +165,10 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
                           )}
                         </Text>
                         <Group gap="xs">
-                          <Button color="green" variant="light" onClick={() => send({ type: "judge", correct: true })}>
+                          <Button color="green" variant="light" onClick={judge(true)} rightSection={<Kbd size="xs">+</Kbd>}>
                             ✓ Верно +{current.value}
                           </Button>
-                          <Button color="red" variant="light" onClick={() => send({ type: "judge", correct: false })}>
+                          <Button color="red" variant="light" onClick={judge(false)} rightSection={<Kbd size="xs">−</Kbd>}>
                             ✗ Неверно{round.minus_on_wrong ? ` −${current.value}` : ""}
                           </Button>
                         </Group>
@@ -156,14 +176,14 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
                     ) : j.starts_at !== null ? (
                       <Group gap="sm">
                         <Text>Вопрос раскрывается на экране…</Text>
-                        <Button variant="default" onClick={() => send({ type: "open_buttons" })}>
+                        <Button variant="default" onClick={openButtons} rightSection={<Kbd size="xs">Space</Kbd>}>
                           Открыть кнопки сейчас
                         </Button>
                       </Group>
                     ) : j.buttons === "bar" ? (
                       <Group gap="sm">
                         <Text>Полоска идёт…</Text>
-                        <Button variant="default" onClick={() => send({ type: "open_buttons" })}>
+                        <Button variant="default" onClick={openButtons} rightSection={<Kbd size="xs">Space</Kbd>}>
                           Открыть кнопки сейчас
                         </Button>
                       </Group>
@@ -181,16 +201,35 @@ export default function JeopardyPanel({ view, send }: PanelProps) {
                   </Alert>
                 )}
 
-                <Group gap="xs">
-                  {(j.phase === "question" || j.phase === "secret") && (
+                {j.phase === "answer" ? (
+                  <Group gap="xs">
+                    <Button onClick={toBoard} rightSection={<Kbd size="xs">Esc</Kbd>}>
+                      К сетке →
+                    </Button>
+                  </Group>
+                ) : (
+                  <Group gap="xs">
                     <Button variant="default" onClick={() => send({ type: "reveal" })}>
                       Показать ответ
                     </Button>
-                  )}
-                  <Button variant={j.phase === "answer" ? "filled" : "default"} onClick={() => send({ type: "to_board" })}>
-                    К сетке →
-                  </Button>
-                </Group>
+                    <Button
+                      ml="auto"
+                      variant="subtle"
+                      color="gray"
+                      onClick={async () => {
+                        const ok = await confirmDialog({
+                          title: "Пропустить вопрос?",
+                          message: "Ответ не покажется, ячейка будет сыграна.",
+                          confirmLabel: "Пропустить",
+                          danger: true,
+                        });
+                        if (ok) toBoard();
+                      }}
+                    >
+                      Пропустить вопрос
+                    </Button>
+                  </Group>
+                )}
               </Stack>
             </Box>
           )}
