@@ -17,6 +17,7 @@ import LobbyPanel from "./LobbyPanel";
 import ReviewPanel from "./ReviewPanel";
 import ScreenBar from "./ScreenBar";
 import TeamsPanel from "./TeamsPanel";
+import { blurActive } from "./useConsoleHotkeys";
 
 export default function Console() {
   const [view, setView] = useState<AdminView | null | undefined>(undefined);
@@ -104,7 +105,10 @@ export default function Console() {
   }
 
   return (
-    <Stack>
+    // A mouse click leaves no focus on a console button: otherwise a later Space/Enter presses it
+    // again (a second undo, the step button, «Открыть» reloading the screen window).
+    // detail > 0 means a pointer click; keyboard activation keeps focus.
+    <Stack onClickCapture={(e) => e.detail > 0 && blurActive()}>
       <Box pos="sticky" top={52} bg="gray.0" style={{ zIndex: 10 }}>
         <Stack gap="xs" py="xs">
           <ScreenBar view={view} send={send} />
