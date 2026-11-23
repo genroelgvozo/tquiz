@@ -22,6 +22,7 @@ import type { EditorPayload, QuestionData, RoundData } from "../lib/types";
 import { confirmDialog, newRoundDialog, promptDialog } from "./dialogs";
 import { notifyApiError, notifyError } from "./notify";
 import QuestionForm from "./QuestionForm";
+import { incompleteCount, missingParts } from "./questionStatus";
 import QuizAppearance from "./QuizAppearance";
 import RoundSettings from "./RoundSettings";
 import { ROUND_KINDS } from "./roundKinds";
@@ -224,6 +225,14 @@ export default function QuizEditor() {
                           {i + 1}. {r.title || "Без названия"}
                         </Text>
                       }
+                      // under the title, not beside it: a third badge would cut the round title off
+                      description={
+                        incompleteCount(r) > 0 && (
+                          <Text span size="xs" c="orange.7">
+                            не заполнено: {incompleteCount(r)}
+                          </Text>
+                        )
+                      }
                       rightSection={
                         <Group gap={4} wrap="nowrap">
                           <Badge>{ROUND_KINDS[r.kind].short}</Badge>
@@ -260,20 +269,27 @@ export default function QuizEditor() {
                                 </RowAction>
                               </Group>
                               <Group gap={4} px="sm" pb="xs">
-                                {c.questions.map((q) => (
-                                  <Button
-                                    key={q.id}
-                                    size="compact-sm"
-                                    variant={isSelected("question", q.id) ? "filled" : "default"}
-                                    style={q.is_secret ? { borderStyle: "dashed" } : undefined}
-                                    title={q.text}
-                                    onClick={() => setSelection({ kind: "question", id: q.id })}
-                                  >
-                                    {q.value}
-                                    {q.is_secret ? " 🎁" : ""}
-                                    {q.media ? (q.media.kind === "audio" ? " ♪" : " ▣") : ""}
-                                  </Button>
-                                ))}
+                                {c.questions.map((q) => {
+                                  const missing = missingParts(q);
+                                  const selected = isSelected("question", q.id);
+                                  const incomplete = missing.length > 0 && !selected;
+                                  return (
+                                    <Button
+                                      key={q.id}
+                                      size="compact-sm"
+                                      variant={selected ? "filled" : incomplete ? "light" : "default"}
+                                      color={incomplete ? "orange" : undefined}
+                                      // a light button has no border of its own: the secret's dash takes the text colour
+                                      style={q.is_secret ? { borderStyle: "dashed", ...(incomplete && { borderColor: "currentColor" }) } : undefined}
+                                      title={missing.length > 0 ? `Не заполнено: ${missing.join(", ")}` : q.text}
+                                      onClick={() => setSelection({ kind: "question", id: q.id })}
+                                    >
+                                      {q.value}
+                                      {q.is_secret ? " 🎁" : ""}
+                                      {q.media ? (q.media.kind === "audio" ? " ♪" : " ▣") : ""}
+                                    </Button>
+                                  );
+                                })}
                                 <Button size="compact-sm" variant="default" onClick={() => addQuestion(r, c.id)}>
                                   +
                                 </Button>
@@ -284,35 +300,40 @@ export default function QuizEditor() {
                         </>
                       ) : (
                         <>
-                          {r.questions.map((q, qi) => (
-                            <NavLink
-                              key={q.id}
-                              component="div"
-                              color="blue"
-                              bdrs="sm"
-                              noWrap
-                              active={isSelected("question", q.id)}
-                              onClick={() => setSelection({ kind: "question", id: q.id })}
-                              label={
-                                <>
-                                  {qi + 1}.{" "}
-                                  {q.text || (
-                                    <Text span c="dimmed" inherit>
-                                      пустой вопрос
-                                    </Text>
-                                  )}
-                                </>
-                              }
-                              rightSection={
-                                (q.options.length > 0 || q.media) && (
-                                  <Group gap={4} wrap="nowrap">
-                                    {q.options.length > 0 && <Badge>варианты</Badge>}
-                                    {q.media && <Badge>{q.media.kind === "audio" ? "♪" : "▣"}</Badge>}
-                                  </Group>
-                                )
-                              }
-                            />
-                          ))}
+                          {r.questions.map((q, qi) => {
+                            const missing = missingParts(q);
+                            return (
+                              <NavLink
+                                key={q.id}
+                                component="div"
+                                color="blue"
+                                bdrs="sm"
+                                noWrap
+                                active={isSelected("question", q.id)}
+                                onClick={() => setSelection({ kind: "question", id: q.id })}
+                                label={
+                                  <>
+                                    {qi + 1}.{" "}
+                                    {q.text || (
+                                      <Text span c="dimmed" inherit>
+                                        пустой вопрос
+                                      </Text>
+                                    )}
+                                  </>
+                                }
+                                title={missing.length > 0 ? `Не заполнено: ${missing.join(", ")}` : undefined}
+                                rightSection={
+                                  (q.options.length > 0 || q.media || missing.length > 0) && (
+                                    <Group gap={4} wrap="nowrap">
+                                      {missing.length > 0 && <Badge color="orange">{missing.join(", ")}</Badge>}
+                                      {q.options.length > 0 && <Badge>варианты</Badge>}
+                                      {q.media && <Badge>{q.media.kind === "audio" ? "♪" : "▣"}</Badge>}
+                                    </Group>
+                                  )
+                                }
+                              />
+                            );
+                          })}
                           <AddButton onClick={() => addQuestion(r)}>+ вопрос</AddButton>
                         </>
                       )}
