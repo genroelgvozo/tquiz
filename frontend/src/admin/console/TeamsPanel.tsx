@@ -20,7 +20,7 @@ export default function TeamsPanel({ view, send }: PanelProps) {
     <Paper withBorder p="md">
       <Group justify="space-between" mb="xs">
         <SectionLabel mb={0}>Команды</SectionLabel>
-        <Button size="compact-sm" variant="default" disabled={!view.undo_available} onClick={() => send({ type: "undo" })}>
+        <Button size="compact-sm" variant="default" disabled={view.undo_label === null} onClick={() => send({ type: "undo" })}>
           ↶ Отменить
         </Button>
       </Group>

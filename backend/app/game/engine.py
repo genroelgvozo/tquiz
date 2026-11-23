@@ -157,6 +157,8 @@ class Game:
             }
         elif type(cmd) in UNDOABLE:
             entry = {"kind": "state", "state": self.state.model_dump(exclude={"undo_stack"})}
+        if entry is not None:
+            entry["label"] = _undo_label(self, cmd)
         handler(self, cmd)
         if entry is not None:
             self.state.undo_stack.append(entry)
@@ -171,6 +173,37 @@ class Game:
         except GameError:
             self.state = backup
             raise
+
+
+def _signed(n: int) -> str:
+    return f"+{n}" if n >= 0 else f"−{-n}"  # U+2212, as in the console buttons
+
+
+def _undo_label(game: Game, cmd) -> str:
+    """What the console shows on the undo button for this command; "" when the data is missing
+    (the handler itself raises the GameError)."""
+    j = game.state.jeopardy
+    if isinstance(cmd, AdjustScore):
+        team = game.find_team(cmd.team_id)
+        return f"правка {team.name} {_signed(cmd.delta)}" if team else ""
+    if isinstance(cmd, SetSecretRecipient):
+        team = game.find_team(cmd.team_id)
+        return f"секрет → {team.name}" if team else ""
+    if not 0 <= game.state.round_index < len(game.quiz.rounds):
+        return ""
+    rnd = game.current_round()
+    if isinstance(cmd, OpenCell):
+        question, category = rnd.find_question(cmd.question_id), rnd.category_of(cmd.question_id)
+        return f"открыта {category.name} · {question.value}" if question and category else ""
+    if isinstance(cmd, Judge):
+        team = game.find_team(j.answering_team_id) if j and j.answering_team_id else None
+        question = jeopardy.current_question(game)
+        if team is None or question is None:
+            return ""
+        if cmd.correct:
+            return f"✓ {team.name} +{question.value}"
+        return f"✗ {team.name} −{question.value}" if rnd.minus_on_wrong else f"✗ {team.name}"
+    return ""
 
 
 # ---------- core handlers ----------

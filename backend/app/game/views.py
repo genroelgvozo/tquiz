@@ -199,7 +199,7 @@ class AdminView(BaseModel):
     quiz: QuizData
     state: AdminState
     online_team_ids: list[str]
-    undo_available: bool
+    undo_label: str | None  # None: nothing to undo; "": an entry from before labels existed
     screen_sound: Literal["none", "on", "off"]
 
 
@@ -483,6 +483,6 @@ def admin_view(
         quiz=game.quiz,
         state=state,
         online_team_ids=[t.id for t in st.teams if t.id in online],
-        undo_available=bool(st.undo_stack),
+        undo_label=st.undo_stack[-1].get("label", "") if st.undo_stack else None,
         screen_sound=screen_sound,
     )

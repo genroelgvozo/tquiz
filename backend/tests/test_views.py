@@ -50,6 +50,13 @@ def scripted_states():
         yield g, s
 
 
+def test_undo_label_only_in_admin_view():
+    for g, _ in scripted_states():
+        assert "undo_label" not in screen_view(g, "u").model_dump_json()
+        for t in g.state.teams:
+            assert "undo_label" not in team_view(g, t.id).model_dump_json()
+
+
 def test_team_view_never_leaks():
     for g, _ in scripted_states():
         for t in g.state.teams:

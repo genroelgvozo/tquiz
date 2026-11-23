@@ -334,7 +334,8 @@ export interface AdminView {
   quiz: QuizData;
   state: AdminState;
   online_team_ids: string[];
-  undo_available: boolean;
+  /** null: nothing to undo; "": an entry from a game started before labels existed */
+  undo_label: string | null;
   screen_sound: "none" | "on" | "off";
 }
 
