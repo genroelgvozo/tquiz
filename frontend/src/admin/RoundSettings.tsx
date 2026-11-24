@@ -137,7 +137,9 @@ export default function RoundSettings({
         <SectionLabel mb={0}>Оформление</SectionLabel>
         <MediaField
           label="Фон тура"
-          description="пусто — фон квиза"
+          description={
+            round.kind === "jeopardy" ? "только в вопросах, на сетке фона нет; пусто — фон квиза" : "пусто — фон квиза"
+          }
           kind="image"
           value={round.background}
           disabled={false}

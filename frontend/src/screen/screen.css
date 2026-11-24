@@ -12,6 +12,7 @@
   position: absolute;
   top: 2.5vh;
   left: 2vw;
+  transition: opacity 0.25s;
 }
 
 .scr-logo .logo {
@@ -172,45 +173,83 @@
   line-height: 1.8;
 }
 
-/* board */
+/*
+ * board: the grid over the whole screen, edge to edge, the score strip under it. Opaque: the background picture
+ * doesn't show on the board, only the theme's colours (the picture comes back with the question).
+ */
 .scr-board-wrap {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 4vh;
-  padding-top: 6vh;
+  background: var(--bg);
 }
 
+/* the logo would cover the first theme; it comes back once the board has gone */
+.scr-root:has(.scr-board-wrap) .scr-logo {
+  opacity: 0;
+}
+
+/*
+ * The grid lines are the board's own colour between the cells. --rows and --cols (set inline) size the text to the
+ * cells: the strip below takes about 8vh, the themes' column is 1.6 of a value column.
+ */
 .scr-board {
+  --grid-line: max(2px, 0.3vh);
+  --row-h: calc(92vh / var(--rows));
+  --col-w: calc(100vw / (var(--cols) + 1.6));
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 0.6vh 0.5vw;
-  font-size: 1.3em;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--grid-line);
+  padding-bottom: var(--grid-line);
+  background: var(--line);
+  line-height: 1.15;
 }
 
 .scr-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 0.6vw;
   background: var(--surface);
-  border-radius: 0.4em;
-  padding: 1.4vh 0.5vw;
   text-align: center;
 }
 
 .scr-cat {
+  justify-content: flex-start;
+  padding: 0 1.5vw;
   text-align: left;
-  padding-left: 1vw;
+  overflow-wrap: anywhere;
+  background: var(--bg);
   color: var(--text);
-  background: transparent;
+  font-size: min(calc(var(--row-h) * 0.24), 2.4vw);
+  font-weight: 600;
+}
+
+.scr-value,
+.scr-played {
+  font-size: min(calc(var(--row-h) * 0.42), calc(var(--col-w) * 0.3));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .scr-value {
   color: var(--accent);
-  font-weight: 700;
 }
 
+/* a played cell sinks to the theme's background, its value barely seen */
 .scr-played,
 .scr-empty {
-  background: transparent;
+  background: var(--bg);
   color: var(--line);
+}
+
+.scr-board-wrap .scr-scores {
+  padding: 2vh 2vw;
 }
 
 /* the picked cell blinks twice with the accent before it expands (duration set inline: 4 × BLINK_MS) */

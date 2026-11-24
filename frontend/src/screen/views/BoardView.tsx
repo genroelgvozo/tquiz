@@ -18,10 +18,16 @@ export default function BoardView({
 }) {
   const { columns, rows } = layoutBoard(j.board.map((c) => c.cells));
   const colCount = Math.max(1, columns.length);
+  // the counts size the text to the cells (see .scr-board)
+  const gridStyle = {
+    gridTemplateColumns: `minmax(0, 1.6fr) repeat(${colCount}, minmax(0, 1fr))`,
+    "--rows": Math.max(1, j.board.length),
+    "--cols": colCount,
+  } as React.CSSProperties;
   let wave = 0; // order of the cells in the wave of pops when the board comes in
   return (
     <div className="scr-board-wrap">
-      <div className="scr-board" style={{ gridTemplateColumns: `1.6fr repeat(${colCount}, 1fr)` }}>
+      <div className="scr-board" style={gridStyle}>
         {j.board.map((cat, ci) => (
           <div className="scr-board-row" key={ci} style={{ display: "contents" }}>
             <div className="scr-cell scr-cat">{cat.name}</div>
